@@ -1,0 +1,15 @@
+name: David_Siska
+channels:
+    - anaconda
+    - pytorch
+    - conda-forge
+    - defaults
+dependencies:
+    - python>=3.9
+    - numpy<=1.23.0
+    - scipy
+    - matplotlib
+    - jupyter
+    - ipykernel
+    - ipywidgets
+    - fastparquet
