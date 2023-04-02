@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from q1 import SolveLQR
+from E1_1 import SolveLQR
 
 from collections import namedtuple
 from typing import Tuple
