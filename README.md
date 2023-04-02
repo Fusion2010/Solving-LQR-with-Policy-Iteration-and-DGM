@@ -5,6 +5,6 @@ Coursework
 * Part (1): done 
 * Part (2): basically done
 
-##Prblem 2.
-*Code done.
-*Waiting for 大哥画图
+## Prblem 2.
+* Code done.
+* Waiting for 大哥画图
