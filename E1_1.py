@@ -1,7 +1,9 @@
 import numpy
 import numpy as np
 import scipy as sp
+from scipy.integrate import simpson
 import matplotlib.pyplot as plt
+
 import torch
 
 from scipy.integrate import odeint
@@ -26,10 +28,6 @@ class SolveLQR:
         ds = - 2 * self.h.T * s + s * self.m * np.linalg.inv(self.d) * self.m * s - C
         return ds.reshape(-1)
 
-    def trace_sigsig_s(self, s, t):
-        ds = np.linalg.matrix_rank(self.sigma*self.sigma.T*s)
-        return ds
-
     def sol_ricatti(self, time):
         if type(time) != np.ndarray:
             time = time.numpy()
@@ -44,12 +42,15 @@ class SolveLQR:
         return sol_s
 
     def get_value(self, time, space):
-        #create another ode and solve or just use data from sol_ricatti
+        s = self.sol_ricatti(time)
         if type(time) != np.ndarray:
             time = time.numpy()
-        #input time be strictly monotone increasing numpy array
-        time_backwards = time[::-1] #solving backwards by setting decreasing time sequence
-        integral_backwards = odeint(self.trace_sigsig_s, 0, time_backwards)
+        integrand = self.sigma * self.sigma.T * s
+        integral_backwards = [0]
+        dt = time[-1]/(len(time)-1)
+        for i in range(len(time)-1):
+            dv = integrand[-(i+2)].trace()*dt
+            integral_backwards.append(dv)
         integral = torch.from_numpy(integral_backwards[::-1].copy())
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
         l = len(space)
