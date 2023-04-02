@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 # import tqdm
-from q1 import SolveLQR
+from E1_1 import SolveLQR
 
 
 
