@@ -5,7 +5,8 @@ Deep Galerkin Method: https://arxiv.org/abs/1708.07469
 import torch
 import torch.nn as nn
 import numpy as np
-# import tqdm
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 from E1_1 import SolveLQR
 
 
@@ -101,48 +102,87 @@ class Net_DGM(nn.Module):
         laplacian = hess_diag.sum(1, keepdim=True)
         return laplacian
 
-max_updates = 1000
-Net = Net_DGM(2, 100, activation='Tanh')
+def train_NN(max_updates = 100000,
+             hidden_size = 100,
+             activation = 'Tanh',
+             learning_rate = 0.001,
+             milestones = (10000,),
+             gamma=0.1,
+             batch_size = 1000,
+             loss_fn = nn.MSELoss(),
+             **kwags):
 
-optimizer = torch.optim.Adam(Net.parameters(), lr=0.001)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=(10000,), gamma=0.1)
+    H = kwags.get('H')
+    M = kwags.get('M')
+    R = kwags.get('R')
+    C = kwags.get('C')
+    D = kwags.get('D')
+    T = kwags.get('T')
+    Sigma = kwags.get('Sigma')
+    Net = Net_DGM(2, hidden_size, activation = activation)
 
-loss_fn = nn.MSELoss()
+    optimizer = torch.optim.Adam(Net.parameters(), lr = learning_rate)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones = milestones, gamma = gamma)
 
-H = np.identity(2)
-M = np.identity(2)
-R = np.identity(2)
-C = 0.1*np.identity(2)
-D = 0.1*np.identity(2)
-T = 1
-Sigma = np.diag([0.05, 0.05])
-LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
+    LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
 
-batch_size = 1000
-running_loss = 0
-for it in range(max_updates):
-    optimizer.zero_grad()
+    running_loss = 0
+    episdoe = []
+    loss_eps = []
 
-    input_domain = (torch.rand(batch_size, 1, 2) - 0.5)*6
-    t = torch.from_numpy(np.linspace(0, 1, batch_size))
-    target_functional = LQR1.get_value(t, input_domain)
+    for it in tqdm(range(max_updates)):
+        optimizer.zero_grad()
 
-    t_net = t.unsqueeze(1)
-    input_domain_net = input_domain.squeeze()
-    u_of_tx = Net(t_net, input_domain_net)
-    loss = loss_fn(u_of_tx, target_functional)
+        input_domain = (torch.rand(batch_size, 1, 2) - 0.5)*6
+        t = torch.from_numpy(np.linspace(0, 1, batch_size))
+        target_functional = LQR1.get_value(t, input_domain)
 
-    loss.backward()
-    optimizer.step()
-    scheduler.step()
-    running_loss += loss.item()
+        t_net = t.unsqueeze(1)
+        input_domain_net = input_domain.squeeze()
+        u_of_tx = Net(t_net, input_domain_net)
+        loss = loss_fn(u_of_tx, target_functional)
 
-    if it % 10 == 0:  # print every 2000 mini-batches
-        print('[%5d] loss: %.3f' %
-              (it + 1, running_loss / 2000))
-        running_loss = 0.0
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+        running_loss += loss.item()
+
+        if (it+1) % (max_updates//20) == 0:  # print every 5%
+            mean_loss = running_loss / (max_updates//20)
+            episdoe.append(it)
+            loss_eps.append(mean_loss)
+            print('[%5d] loss: %.9f' % (it+1, mean_loss))
+
+            running_loss = 0.0
+
+    if kwags['visualize']:
+        plt.plot(episdoe, loss_eps)
+        plt.xlabel("Timesteps", fontsize = 20)
+        plt.ylabel("Averaged Loss", fontsize = 20)
+        plt.xticks(fontsize = 15)
+        plt.yticks(fontsize = 15)
+        plt.tight_layout(pad = 0.3)
+
+        plt.show()
+
+kwags = {
+    'H': np.identity(2),
+    'M': np.identity(2),
+    'R': np.identity(2),
+    'C': 0.1*np.identity(2),
+    'D': 0.1*np.identity(2),
+    'T': 1,
+    'Sigma': np.diag([0.05, 0.05]),
+    'visualize': True,
+}
 
 
-
-
-
+train_NN(max_updates = 1000,
+         hidden_size = 100,
+         activation = 'Tanh',
+         learning_rate = 0.001,
+         milestones = (10000,),
+         gamma=0.1,
+         batch_size = 1000,
+         loss_fn = nn.MSELoss(reduction = 'mean'),
+         **kwags)

@@ -51,7 +51,7 @@ class SolveLQR:
         for i in range(len(time)-1):
             dv = integrand[-(i+2)].trace()*dt
             integral_backwards.append(dv)
-        integral = torch.from_numpy(integral_backwards[::-1].copy())
+        integral = torch.tensor(integral_backwards[::-1].copy())
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
         l = len(space)
         value = torch.bmm(torch.bmm(space, s), torch.reshape(space,(l,2,1))).squeeze(2) + integral
