@@ -1,3 +1,14 @@
+import numpy
+import numpy as np
+import scipy as sp
+from scipy.integrate import simpson
+import matplotlib.pyplot as plt
+
+import torch
+
+from scipy.integrate import odeint
+
+
 import numpy as np
 import scipy as sp
 from scipy.integrate import simpson
@@ -41,25 +52,20 @@ class SolveLQR:
         return sol_s
 
     def get_value(self, time, space):
+        #space is a trensor of 1*2
         s = self.sol_ricatti(time)
-        if type(time) != np.ndarray:
-            time = time.numpy()
+        s0 = torch.from_numpy(s[0])
         integrand = self.sigma * self.sigma.T * s
-        integral_backwards = [0]
+        integral = 0
         dt = time[-1]/(len(time)-1)
         for i in range(len(time)-1):
-            dv = integrand[-(i+2)].trace()*dt
-            integral_backwards.append(dv)
-        integral = torch.tensor(integral_backwards[::-1].copy())
-        s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
-        l = len(space)
-        value = torch.bmm(torch.bmm(space, s), torch.reshape(space,(l,2,1))).squeeze(2) + integral
+            dy = integrand[i].trace()*dt
+            integral += dy
+        value = torch.mm(torch.mm(space, s0), space.T).squeeze() + integral
         #reversed solution corresponding to input time(increasing)
         return value
 
     def get_controller(self, time, space):
-        if type(time) != np.ndarray:
-            time = np.array(time)
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
         l = len(space)
         a0 = torch.from_numpy(- self.d * self.m.T).float()
