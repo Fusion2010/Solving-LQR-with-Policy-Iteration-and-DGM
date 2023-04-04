@@ -52,7 +52,9 @@ class SolveLQR:
         return sol_s
 
     def get_value(self, time, space):
-        #space is a trensor of 1*2
+        #time is a uniform time array or tensor 
+        #space is a trensor. i.e. tesor([1,1])
+        #return value at (time[0], space)
         s = self.sol_ricatti(time)
         s0 = torch.from_numpy(s[0])
         integrand = self.sigma * self.sigma.T * s
@@ -62,7 +64,6 @@ class SolveLQR:
             dy = integrand[i].trace()*dt
             integral += dy
         value = torch.mm(torch.mm(space, s0), space.T).squeeze() + integral
-        #reversed solution corresponding to input time(increasing)
         return value
 
     def get_controller(self, time, space):
