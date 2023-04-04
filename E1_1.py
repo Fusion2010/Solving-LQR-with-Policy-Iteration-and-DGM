@@ -1,4 +1,3 @@
-import numpy
 import numpy as np
 import scipy as sp
 from scipy.integrate import simpson
@@ -60,7 +59,7 @@ class SolveLQR:
 
     def get_controller(self, time, space):
         if type(time) != np.ndarray:
-            time = time.numpy()
+            time = np.array(time)
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
         l = len(space)
         a0 = torch.from_numpy(- self.d * self.m.T).float()

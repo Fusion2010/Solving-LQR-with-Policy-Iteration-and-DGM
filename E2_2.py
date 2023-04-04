@@ -77,6 +77,6 @@ for it in range(max_updates):
     running_loss += loss.item()
 
     if it % 10 == 0:  # print every 2000 mini-batches
-        print('[%5d] loss: %.6f' %
-              (it + 1, running_loss / 2000))
+        print('[%5d] loss: %.9f' %
+              (it + 1, running_loss / 10))
         running_loss = 0.0

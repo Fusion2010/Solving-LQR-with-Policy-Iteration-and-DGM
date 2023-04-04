@@ -102,15 +102,15 @@ class Net_DGM(nn.Module):
         laplacian = hess_diag.sum(1, keepdim=True)
         return laplacian
 
-def train_NN(max_updates = 100000,
-             hidden_size = 100,
-             activation = 'Tanh',
-             learning_rate = 0.001,
-             milestones = (10000,),
-             gamma=0.1,
-             batch_size = 1000,
-             loss_fn = nn.MSELoss(),
-             **kwags):
+def train_value(max_updates = 1000,
+                hidden_size = 100,
+                activation = 'Tanh',
+                learning_rate = 0.001,
+                milestones = (10000,),
+                gamma=0.1,
+                batch_size = 1000,
+                loss_fn = nn.MSELoss(),
+                **kwags):
 
     H = kwags.get('H')
     M = kwags.get('M')
@@ -151,7 +151,7 @@ def train_NN(max_updates = 100000,
             mean_loss = running_loss / (max_updates//20)
             episdoe.append(it)
             loss_eps.append(mean_loss)
-            print('[%5d] loss: %.9f' % (it+1, mean_loss))
+            print('[%5d] Training loss: %.9f' % (it+1, mean_loss))
 
             running_loss = 0.0
 
@@ -177,12 +177,12 @@ kwags = {
 }
 
 
-train_NN(max_updates = 1000,
-         hidden_size = 100,
-         activation = 'Tanh',
-         learning_rate = 0.001,
-         milestones = (10000,),
-         gamma=0.1,
-         batch_size = 1000,
-         loss_fn = nn.MSELoss(reduction = 'mean'),
-         **kwags)
+train_value(max_updates = 1000,
+            hidden_size = 100,
+            activation = 'Tanh',
+            learning_rate = 0.001,
+            milestones = (10000,),
+            gamma=0.1,
+            batch_size = 1000,
+            loss_fn = nn.MSELoss(reduction = 'mean'),
+            **kwags)
