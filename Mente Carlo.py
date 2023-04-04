@@ -11,7 +11,7 @@ C_T = torch.tensor(0.1*np.identity(2)).float()
 D_T = torch.tensor(0.1*np.identity(2)).float()
 T = 1
 Sigma_T = torch.tensor(np.diag([0.05, 0.05])).float()
-x = torch.tensor([1, -1]).float()
+x = torch.tensor([-3, 3]).float()
 
 def value_function(solver, time, space):
     return solver.get_value(time, space)
@@ -98,4 +98,4 @@ x_list, alpha_list = X_simu(lqr, Sigma_T, T, x)
 
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, torch.stack(x_list).unsqueeze(1)))
-train_MC(100, t, measure = False)
+train_MC(1000, t, measure = False)
