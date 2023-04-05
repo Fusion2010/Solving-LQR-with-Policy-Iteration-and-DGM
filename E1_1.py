@@ -35,14 +35,14 @@ class SolveLQR:
         #input and output of solution need to be  1*4 array limited to ode solver
         #reshape to matrix
         s = s.reshape([2, 2])
-        ds = - 2 * self.h.T * s + s * self.m * np.linalg.inv(self.d) * self.m * s - C
+        ds = - 2 * self.h.T * s + s * self.m * np.linalg.inv(self.d) * self.m * s - self.c
         return ds.reshape(-1)
 
     def sol_ricatti(self, time):
         if type(time) != np.ndarray:
             time = time.numpy()
         r = self.r.reshape(-1)
-        #input time be strictly monotone increasing numpy array
+        # input time be strictly monotone increasing numpy array
         time_backwards = time[::-1] #solving backwards by setting decreasing time sequence
         sol_s_backwards = odeint(self.ricatti_ode, r, time_backwards)
         sol_s = sol_s_backwards[::-1]
@@ -56,12 +56,12 @@ class SolveLQR:
         #space is a trensor. i.e. tesor([1,1])
         #return value at (time[0], space)
         s = self.sol_ricatti(time)
-        s0 = torch.from_numpy(s[0])
+        s0 = torch.from_numpy(s[0]).float()
         integrand = self.sigma * self.sigma.T * s
         integral = 0
-        dt = time[-1]/(len(time)-1)
-        for i in range(len(time)-1):
-            dy = integrand[i].trace()*dt
+        dt = time[-1] / (len(time) - 1)
+        for i in range(len(time) - 1):
+            dy = integrand[i].trace() * dt
             integral += dy
         value = torch.mm(torch.mm(space, s0), space.T).squeeze() + integral
         return value
@@ -84,3 +84,4 @@ T = 1
 Sigma = np.diag([0.05, 0.05])
 
 LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
+t = torch.from_numpy(np.linspace(0, 1, 1000))

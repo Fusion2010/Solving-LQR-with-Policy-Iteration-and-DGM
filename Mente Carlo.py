@@ -4,98 +4,116 @@ from E1_1 import SolveLQR
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 
-H_T = torch.tensor(np.identity(2)).float()
-M_T = torch.tensor(np.identity(2)).float()
-R_T = torch.tensor(torch.tensor(np.identity(2))).float()
-C_T = torch.tensor(0.1*np.identity(2)).float()
-D_T = torch.tensor(0.1*np.identity(2)).float()
-T = 1
-Sigma_T = torch.tensor(np.diag([0.05, 0.05])).float()
-x = torch.tensor([-3, 3]).float()
+class Mente_Carlo:
 
-def value_function(solver, time, space):
-    return solver.get_value(time, space)
+    def __init__(self, time_steps: list, sample_size: int, method: str):
 
-def MC_controller(solver, time, space):
-    return solver.get_controller(time, space)
+        '''
+        Initialize LQR solver
+        '''
+        self.H = np.identity(2)
+        self.M = np.identity(2)
+        self.R = np.identity(2)
+        self.C = 0.1 * np.identity(2)
+        self.D = 0.1 * np.identity(2)
+        self.T = 1
+        self.Sigma = np.diag([0.05, 0.05])
+        self.solver = SolveLQR(self.H, self.M, self.Sigma, self.C, self.D, self.R, self.T)
 
-def drift_ode(H, M, alpha, x, delta_t):
-    return (torch.matmul(H, x.T) + torch.matmul(M, alpha.T)) * delta_t
+        '''
+        Initialize tensors
+        '''
+        self.H_T = torch.tensor(np.identity(2)).float()
+        self.M_T = torch.tensor(np.identity(2)).float()
+        self.R_T = torch.tensor(torch.tensor(np.identity(2))).float()
+        self.C_T = torch.tensor(0.1*np.identity(2)).float()
+        self.D_T = torch.tensor(0.1*np.identity(2)).float()
+        self.T = 1
+        self.Sigma_T = torch.tensor(np.diag([0.05, 0.05])).float()
+        self.x = torch.tensor([[3, 3]]).float()
 
-def X_simu(solver, sigma, T, x_init = x, delta_t = 0.001):
-
-    X = x_init.unsqueeze(0)
-    t = 0
-    x_list = []
-    alpha_list = []
-
-    while t < T:
-        alpha_t = MC_controller(solver, torch.tensor([t]), X).squeeze().float()
-        BM = torch.normal(mean = 0, std = np.sqrt(delta_t), size = (1, 2))
-        diffusion = torch.transpose(torch.matmul(sigma, BM.unsqueeze(2)), 1, 2)
-        X = X + drift_ode(H_T, M_T, alpha_t, X.squeeze().float(), delta_t) + diffusion
-        t += delta_t
-        x_list.append(X.squeeze())
-        alpha_list.append(alpha_t)
-
-    return x_list, alpha_list
-
-def objective_function(sample, control, delta_t, R_T):
-
-    X_T = sample[-1]
-    terminal = torch.matmul(torch.matmul(X_T, R_T), X_T.T)
-    f = 0
-    for i in range(len(sample)):
-        f += (
-                torch.matmul(torch.matmul(sample[i], C_T), sample[i].T) + torch.matmul(torch.matmul(control[i], C_T), control[i].T)
-              ) * delta_t
-
-    return f + terminal
-
-def train_MC(episodes, t_list, measure = True, visualize = True):
-
-    error_list = []
-    G = 0
-    for eps in tqdm(range(1, episodes + 1)):
-        sample, alpha_list = X_simu(lqr, Sigma_T, 1)
-        r = objective_function(sample, alpha_list, 0.001, R_T)
-        G = (G * (eps - 1) + r) / eps
-
-        value = value_function(lqr,
-                               t_list,
-                               torch.stack(sample).unsqueeze(1)
-                               )[-1][0]
-        error = np.abs(G - value)
-
-        if measure:
-            print(f'The l1-norm is evaluated by: {error.item()}')
-
-        if visualize:
-            error_list.append(error.item())
-            if eps == episodes:
-                plt.plot(np.arange(1, episodes + 1), error_list)
-                plt.xlabel("Timesteps", fontsize=20)
-                plt.ylabel("Loss", fontsize=20)
-                plt.xticks(fontsize=15)
-                plt.yticks(fontsize=15)
-                plt.tight_layout(pad=0.3)
-
-                plt.show()
+        '''
+        Initialize sample sizes and time space
+        '''
+        self.simu_method = method
+        self.time_steps = time_steps
+        self.delta_t = self.time_steps[1] - self.time_steps[0]
+        self.sample_size = sample_size
 
 
-H = np.identity(2)
-M = np.identity(2)
-R = np.identity(2)
-C = 0.1*np.identity(2)
-D = 0.1*np.identity(2)
-T = 1
-Sigma = np.diag([0.05, 0.05])
-lqr = SolveLQR(H, M, Sigma, C, D, R, T)
+    def value_function(self):
+        return self.solver.get_value(self.time_steps, self.x)
 
-input_domain = (torch.rand(1, 1, 2) - 0.5)*6
+    def MC_controller(self, t, x):
+        return self.solver.get_controller(t, x)
+
+    def drift_ode(self, x_t, alpha):
+        return (torch.matmul(self.H_T, x_t.T) + torch.matmul(self.M_T, alpha.T)) * self.delta_t
+
+    def X_simu(self):
+
+        X = self.x.unsqueeze(0)
+        t = 0
+        x_list = []
+        alpha_list = []
+
+        while t < self.T:
+            alpha_t = self.MC_controller(torch.tensor([t]), X).squeeze().float()
+            BM = torch.normal(mean = 0, std = np.sqrt(self.delta_t), size = (1, 2))
+            diffusion = torch.transpose(torch.matmul(self.Sigma_T, BM.unsqueeze(2)), 1, 2)
+            X = X + self.drift_ode(alpha_t, X.squeeze().float()) + diffusion
+            t += self.delta_t
+            x_list.append(X.squeeze())
+            alpha_list.append(alpha_t)
+
+        return x_list, alpha_list
+
+    def objective_function(self, sample, control, delta_t):
+
+        X_T = sample[-1]
+        terminal = torch.matmul(torch.matmul(X_T, self.R_T), X_T.T)
+        f = 0
+        for i in range(len(sample)):
+            f += (
+                    torch.matmul(torch.matmul(sample[i], self.C_T), sample[i].T) + torch.matmul(torch.matmul(control[i], self.D_T), control[i].T)
+                  ) * delta_t
+
+        return f + terminal
+
+    def train_MC(self, measure = True, visualize = True):
+
+        error_list = []
+        value = self.value_function()
+        episodes = self.sample_size
+
+        G = 0
+        for eps in tqdm(range(1, episodes + 1)):
+            sample, alpha_list = self.X_simu()
+            r = self.objective_function(sample, alpha_list, 0.001)
+            G = (G * (eps - 1) + r) / eps
+
+            error = np.abs(G - value)
+
+            if measure:
+                print(f'The l1-norm is evaluated by: {error.item()}')
+
+            if visualize:
+                error_list.append(error.item())
+                if eps == episodes:
+                    plt.plot(np.arange(1, episodes + 1), error_list)
+                    plt.xlabel("Timesteps", fontsize=20)
+                    plt.ylabel("Loss", fontsize=20)
+                    plt.xticks(fontsize=15)
+                    plt.yticks(fontsize=15)
+                    plt.tight_layout(pad=0.3)
+
+                    plt.show()
+
+
 t = torch.from_numpy(np.linspace(0, 1, 1000))
-x_list, alpha_list = X_simu(lqr, Sigma_T, T, x)
+mc = Mente_Carlo(t, 100, 'sample')
+x_list, alpha_list = mc.X_simu()
 
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
-# print(value_function(lqr, t, torch.stack(x_list).unsqueeze(1)))
-train_MC(1000, t, measure = False)
+# print(value_function(lqr, t, x))
+mc.train_MC(measure = False)
