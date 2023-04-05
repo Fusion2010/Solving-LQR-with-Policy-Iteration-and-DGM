@@ -1,14 +1,3 @@
-import numpy
-import numpy as np
-import scipy as sp
-from scipy.integrate import simpson
-import matplotlib.pyplot as plt
-
-import torch
-
-from scipy.integrate import odeint
-
-
 import numpy as np
 import scipy as sp
 from scipy.integrate import simpson
@@ -42,36 +31,36 @@ class SolveLQR:
         if type(time) != np.ndarray:
             time = time.numpy()
         r = self.r.reshape(-1)
+        l = len(time)
         # input time be strictly monotone increasing numpy array
         time_backwards = time[::-1] #solving backwards by setting decreasing time sequence
         sol_s_backwards = odeint(self.ricatti_ode, r, time_backwards)
-        sol_s = sol_s_backwards[::-1]
-        l = len(sol_s)
-        sol_s = sol_s.reshape(l,2,2)
+        sol_s = sol_s_backwards.reshape(l,2,2)
+        sol_s = sol_s[::-1]
         #reversed solution corresponding to input time(increasing)
         return sol_s
 
     def get_value(self, time, space):
-        #time is a uniform time array or tensor 
+        #time is a uniform time array or tensor
         #space is a trensor. i.e. tesor([1,1])
         #return value at (time[0], space)
         s = self.sol_ricatti(time)
-        s0 = torch.from_numpy(s[0]).float()
         integrand = self.sigma * self.sigma.T * s
+        s0 = torch.from_numpy(s[0]).long()
         integral = 0
-        dt = time[-1] / (len(time) - 1)
+        dt = time[1]-time[0]
         for i in range(len(time) - 1):
             dy = integrand[i].trace() * dt
             integral += dy
-        value = torch.mm(torch.mm(space, s0), space.T).squeeze() + integral
-        return value
+        value = torch.mm(torch.mm(space.unsqueeze(0), s0), space.unsqueeze(1)).squeeze() + integral
+        return value.float()
 
     def get_controller(self, time, space):
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
-        l = len(space)
+        s = s[0]
         a0 = torch.from_numpy(- self.d * self.m.T).float()
-        a1 = torch.bmm(s, torch.reshape(space, (l,2,1)))
-        a = torch.matmul(a0, a1).squeeze()
+        a1 = torch.mm(s, space.unsqueeze(1))
+        a = torch.mm(a0, a1).squeeze()
         return a
 
 
@@ -83,5 +72,8 @@ D = 0.1*np.identity(2)
 T = 1
 Sigma = np.diag([0.05, 0.05])
 
+space = torch.tensor([0, 0])
 LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
 t = torch.from_numpy(np.linspace(0, 1, 1000))
+s = LQR1.get_value(t, space)
+print(s)
