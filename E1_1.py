@@ -30,23 +30,27 @@ class SolveLQR:
     def sol_ricatti(self, time):
         if type(time) != np.ndarray:
             time = time.numpy()
-        r = self.r.reshape(-1)
-        l = len(time)
-        # input time be strictly monotone increasing numpy array
-        time_backwards = time[::-1] #solving backwards by setting decreasing time sequence
-        sol_s_backwards = odeint(self.ricatti_ode, r, time_backwards)
-        sol_s = sol_s_backwards.reshape(l,2,2)
+        sol_s = [self.r]
+        print(time)
+        dt = time[1] - time[0]
+        for i in range(len(time) - 1):
+            s = sol_s[i]
+            ds = - 2 * self.h.T * s + s* self.m * np.linalg.inv(self.d) * self.m * s - self.c
+            s -= ds * dt
+            sol_s.append(s)
+
         sol_s = sol_s[::-1]
         #reversed solution corresponding to input time(increasing)
         return sol_s
 
     def get_value(self, time, space):
         #time is a uniform time array or tensor
-        #space is a trensor. i.e. tesor([1,1])
+        #space is a trensor. i.e. tesor([[1,1]])
         #return value at (time[0], space)
+        space = space.squeeze(0).float()
         s = self.sol_ricatti(time)
         integrand = self.sigma * self.sigma.T * s
-        s0 = torch.from_numpy(s[0]).long()
+        s0 = torch.from_numpy(s[0]).float()
         integral = 0
         dt = time[1]-time[0]
         for i in range(len(time) - 1):
@@ -59,8 +63,9 @@ class SolveLQR:
         s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
         s = s[0]
         a0 = torch.from_numpy(- self.d * self.m.T).float()
-        a1 = torch.mm(s, space.unsqueeze(1))
+        a1 = torch.mm(s, torch.reshape(space, (2,1)))
         a = torch.mm(a0, a1).squeeze()
+
         return a
 
 
@@ -74,6 +79,6 @@ Sigma = np.diag([0.05, 0.05])
 
 space = torch.tensor([0, 0])
 LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
-t = torch.from_numpy(np.linspace(0, 1, 1000))
-s = LQR1.get_value(t, space)
-print(s)
+t = np.linspace(0, 1, 1000)
+
+print(LQR1.sol_ricatti(t))

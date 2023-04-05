@@ -52,7 +52,7 @@ class Mente_Carlo:
 
     def X_simu(self):
 
-        X = self.x.unsqueeze(0)
+        X = self.x
         t = 0
         x_list = []
         alpha_list = []
@@ -113,7 +113,6 @@ class Mente_Carlo:
 t = torch.from_numpy(np.linspace(0, 1, 1000))
 mc = Mente_Carlo(t, 100, 'sample')
 x_list, alpha_list = mc.X_simu()
-
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, x))
 mc.train_MC(measure = False)
