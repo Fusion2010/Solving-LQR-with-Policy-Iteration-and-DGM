@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-from E1_1 import SolveLQR
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 
@@ -114,5 +113,5 @@ t = torch.from_numpy(np.linspace(0, 1, 1000))
 mc = Mente_Carlo(t, 100, 'sample')
 x_list, alpha_list = mc.X_simu()
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
-# print(value_function(lqr, t, x))
-mc.train_MC(measure = False)
+print(mc.value_function())
+# mc.train_MC(measure = False)

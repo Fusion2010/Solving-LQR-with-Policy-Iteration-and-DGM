@@ -2,13 +2,26 @@ import numpy as np
 import torch
 from torch.optim import Adam
 from tqdm import tqdm
-from E1_1 import SolveLQR
-from E2_2 import FFN
-from E2_1 import Net_DGM, DGM_Layer
+from Networks import FFN, Net_DGM, DGM_Layer
+
+def get_gradient(output, x):
+    grad = torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True, only_inputs=True)[0]
+    return grad
+
+def get_laplacian(grad, x):
+    hess_diag = []
+    for d in range(x.shape[1]):
+        v = grad[:,d].view(-1,1)
+        grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
+        hess_diag.append(grad2[:,d].view(-1,1))
+    hess_diag = torch.cat(hess_diag,1)
+    laplacian = hess_diag.sum(1, keepdim=True)
+    return laplacian
+
 
 class AgentDP:
 
-    def __init__(self, batch_size, H, M, C, D,
+    def __init__(self, batch_size, H, M, C, D, sigma, T,
                  learning_rate_critic,
                  learning_rate_policy):
         '''
@@ -28,33 +41,99 @@ class AgentDP:
         self.M = M
         self.C = C
         self.D = D
+        self.sigma = sigma
+        self.tr = (self.sigma * self.sigma.T).trace()
+        self.T = T
 
         self.optim_critic = Adam(self.critic_net.parameters(), lr = learning_rate_critic)
         self.optim_policy = Adam(self.policy_net.parameters(), lr = learning_rate_policy)
 
-    def Hamiltonian(self, t, x):
+        self.loss_fn = torch.nn.MSELoss()
+
+    def policy_improvement(self, t, x):
         '''
         :param t: one episode of t with batch size
         :param x: one episode of x with batch size
         :return: loss of critic network
         '''
 
-        H = 0
-        control = self.policy_net.forward(t, x)
-        value = self.critic_net.forward(t, x)
-        value.backward()
-        value_partial = x.grad
+        u_of_tx = self.critic_net(t, x)
+        grad_u_x = get_gradient(u_of_tx, x)
+        alpha = self.policy_net(t, x)
+
+        self.optim_policy.zero_grad()
+
+        H_loss = (torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.H),grad_u_x.unsqueeze(2))\
+                  + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.M),grad_u_x.unsqueeze(2))
+                  + torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.C), x.detach().unsqueeze(2))\
+                  + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.D),alpha.unsqueeze(2))).squeeze(1)
+
+        H_loss /= self.batch_size
+
+        H_loss.backward()
+        self.optim_policy.step()
+
+        return {'Hamiltonian loss:', H_loss.item()}
+
+    def policy_evaluate(self, t, x):
+        '''
+        :param t: one episode of t with batch size
+        :param x: one episode of x with batch size
+        :return: loss of policy network
+        '''
+
+        P = 0
+
+        alpha = self.policy_net(t, x)
+
+        u_of_tx = self.critic_net(t, x)
+        grad_u_x = get_gradient(u_of_tx, x)
+        grad_u_t = get_gradient(u_of_tx, t)
+        laplacian = get_laplacian(grad_u_x, x)
+
+        target_functional = torch.zeros_like(u_of_tx)
 
         self.optim_critic.zero_grad()
-        H += torch.matmul(value_partial.T, torch.matmul(self.H, x)) \
-             + torch.matmul(value_partial.T, torch.matmul(self.M, control)) \
-             + torch.matmul(x.T, torch.matmul(self.C, x)) \
-             + torch.matmul(control.T, torch.matmul(self.D, control))
+        pde = grad_u_t + 0.5 * self.tr * laplacian \
+              + (torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.H), grad_u_x.unsqueeze(2)) \
+                 + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.M), grad_u_x.unsqueeze(2))
+                 + torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.C), x.detach().unsqueeze(2)) \
+                 + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.D), alpha.unsqueeze(2))).squeeze(1)
 
-        H /= self.batch_size
+        MSE_functional = self.loss_fn(pde, target_functional)
 
-        H.backward()
+        input_terminal = x
+        t = torch.ones(self.batch_size, 1) * self.T
+
+        u_of_tx = self.critic_net(t, input_terminal)
+        target_terminal = torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.C),
+                                       x.detach().unsqueeze(2)).squeeze()
+        MSE_terminal = self.loss_fn(u_of_tx, target_terminal)
+
+        B_loss = MSE_functional + MSE_terminal
+        B_loss.backward()
         self.optim_critic.step()
 
-        return {'Hamiltonian loss: ', H}
+        return {'Bellman Loss:': B_loss.item()}
+
+H = np.identity(2)
+M = np.identity(2)
+R = np.identity(2)
+C = 0.1*np.identity(2)
+D = 0.1*np.identity(2)
+T = 1
+sigma = np.diag([0.05, 0.05])
+H = torch.from_numpy(H)
+M = torch.from_numpy(M)
+C = torch.from_numpy(C)
+D = torch.from_numpy(D)
+
+# Initialize the dynamic programming agent
+agent = AgentDP(1, H, M, C, D, sigma, T, 0.001, 0.001)
+
+# Example of usage of update function
+t = torch.rand(1, 1, requires_grad=True).double()
+input_domain = (torch.rand(1, 2, requires_grad=True) - 0.5)*6
+input_domain = input_domain.double()
+print(agent.policy_improvement(t, input_domain))
 

@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from E1_1 import SolveLQR
 from matplotlib import pyplot as plt
-
+from E1_1 import SolveLQR
 from collections import namedtuple
 from typing import Tuple
 
