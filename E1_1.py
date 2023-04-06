@@ -10,7 +10,7 @@ from scipy.integrate import odeint
 
 class SolveLQR:
 
-    def __init__(self, h, m, sigma, c, d, r, capt):
+    def __init__(self, h, m, sigma, c, d, r, time_grid):
         #variables in lowercase are corresponding uppercase matrices or arrays in LQR
         self.h = h
         self.m = m
@@ -18,54 +18,50 @@ class SolveLQR:
         self.c = c
         self.d = d
         self.r = r
-        self.capt = capt
+        self.capt = time_grid[-1]
+        self.dt = time_grid[1] - time_grid[0]
+        self.time = time_grid
+        self.solution = self.sol_ricatti()
 
-    def ricatti_ode(self, s, t):
-        #input and output of solution need to be  1*4 array limited to ode solver
-        #reshape to matrix
-        s = s.reshape([2, 2])
-        ds = - 2 * self.h.T * s + s * self.m * np.linalg.inv(self.d) * self.m * s - self.c
-        return ds.reshape(-1)
-
-    def sol_ricatti(self, time):
-        if type(time) != np.ndarray:
-            time = time.numpy()
+    def sol_ricatti(self):
+        #solve on time_grid
         sol_s = [self.r]
-        print(time)
-        dt = time[1] - time[0]
-        for i in range(len(time) - 1):
+        for i in range(len(self.time) - 1):
             s = sol_s[i]
             ds = - 2 * self.h.T * s + s* self.m * np.linalg.inv(self.d) * self.m * s - self.c
-            s -= ds * dt
+            s -= ds * self.dt
             sol_s.append(s)
-
         sol_s = sol_s[::-1]
         #reversed solution corresponding to input time(increasing)
         return sol_s
 
     def get_value(self, time, space):
-        #time is a uniform time array or tensor
-        #space is a trensor. i.e. tesor([[1,1]])
-        #return value at (time[0], space)
-        space = space.squeeze(0).float()
-        s = self.sol_ricatti(time)
-        integrand = self.sigma * self.sigma.T * s
-        s0 = torch.from_numpy(s[0]).float()
-        integral = 0
-        dt = time[1]-time[0]
-        for i in range(len(time) - 1):
-            dy = integrand[i].trace() * dt
-            integral += dy
-        value = torch.mm(torch.mm(space.unsqueeze(0), s0), space.unsqueeze(1)).squeeze() + integral
-        return value.float()
+        #cnvert time tensor to corresponding index list, index on timegrid
+        time_index_list = torch.div(time, self.dt).floor().tolist()
+        v1 = torch.zeros_like(time)
+        for i in range(len(time)):
+            t0_index = time_index_list[i]
+            integral = 0
+            while t0_index < len(self.solution)-1:
+                sr = np.array(self.solution[t0_index])
+                integrand = np.dot(np.dot(self.sigma, self.sigma.T), sr)
+                integral += integrand.trace() * self.dt
+                t0_index += 1
+            v1[i] = integral
+
+        st = torch.tensor([self.solution[index] for index in time_index_list])
+        l = len(time)
+        v0 = torch.matmul(torch.matmul(space, st), space.reshape(l,2,1))
+        v = v0.squeeze() + v1.squeeze()
+        return v.unsqueeze(1)
 
     def get_controller(self, time, space):
-        s = torch.from_numpy(self.sol_ricatti(time).copy()).float()
-        s = s[0]
-        a0 = torch.from_numpy(- self.d * self.m.T).float()
-        a1 = torch.mm(s, torch.reshape(space, (2,1)))
-        a = torch.mm(a0, a1).squeeze()
-
+        time_index_list = torch.div(time, self.dt).floor().tolist()
+        st = torch.tensor([self.solution[index] for index in time_index_list])
+        a0 = torch.matmul(- self.d, self.m.T)
+        l = len(time)
+        a1 = torch.matmul(st, space.reshape((l, 2, 1)))
+        a = torch.matmul(a0, a1)
         return a
 
 
@@ -74,11 +70,9 @@ M = np.identity(2)
 R = np.identity(2)
 C = 0.1*np.identity(2)
 D = 0.1*np.identity(2)
-T = 1
+t_grid = np.linspace(0, 1, 10001)
 Sigma = np.diag([0.05, 0.05])
-
-space = torch.tensor([0, 0])
-LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
-t = np.linspace(0, 1, 1000)
-
-print(LQR1.sol_ricatti(t))
+t = torch.tensor(t_grid)
+space = torch.tensor()
+LQR1 = SolveLQR(H, M, Sigma, C, D, R, t_grid)
+a = LQR1.get_value(t, [0, 0])
