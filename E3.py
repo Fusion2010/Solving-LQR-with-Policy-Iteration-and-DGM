@@ -108,19 +108,15 @@ scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=(10000,),
 
 loss_fn = nn.MSELoss()
 
-H = np.identity(2)
-M = np.identity(2)
-R = np.identity(2)
-C = 0.1*np.identity(2)
-D = 0.1*np.identity(2)
+H = torch.eye(2).double()
+M = torch.eye(2).double()
+R = torch.eye(2).double()
+C = torch.eye(2).double()* 0.1
+D = torch.eye(2).double() * 0.1
 T = 1
-Sigma = np.diag([0.05, 0.05])
-# LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
-H = torch.from_numpy(H)
-M = torch.from_numpy(M)
-C = torch.from_numpy(C)
-D = torch.from_numpy(D)
-Sig = Sigma * Sigma.T
+sigma = torch.diag(torch.tensor([0.5, 0.5]))
+#LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
+Sig = sigma * sigma.T
 tr = Sig.trace()
 
 batch_size = 1
@@ -148,10 +144,12 @@ for it in range(max_updates):
 
 
     pde = grad_u_t + 0.5 * tr * laplacian \
-          + (torch.matmul(torch.matmul(input_domain.detach().unsqueeze(1), H),grad_u_x.unsqueeze(2))\
-          + torch.matmul(torch.matmul(alpha.unsqueeze(1),M),grad_u_x.unsqueeze(2))
-          + torch.matmul(torch.matmul(input_domain.detach().unsqueeze(1),C),input_domain.detach().unsqueeze(2))\
-          + torch.matmul(torch.matmul(alpha.unsqueeze(1),D ),alpha.unsqueeze(2))).squeeze(1)
+              + (torch.mul(torch.matmul(input_domain, H.T), grad_u_x)
+                 + torch.mul(torch.matmul(alpha, M.T), grad_u_x)
+                 + torch.mul(torch.matmul(input_domain, C), input_domain)
+                 + torch.mul(torch.matmul(alpha, D), alpha)
+                 ).sum(dim = 1).unsqueeze(1)
+
 
     MSE_functional = loss_fn(pde, target_functional)
 
@@ -159,7 +157,7 @@ for it in range(max_updates):
     t = torch.ones(batch_size, 1) * T
 
     u_of_tx = Net(t, input_terminal)
-    target_terminal = torch.matmul(torch.matmul(input_domain.detach().unsqueeze(1),C),input_domain.detach().unsqueeze(2)).squeeze()
+    target_terminal = torch.mul(torch.matmul(input_terminal, R), input_terminal).sum(dim = 1).unsqueeze(1)
     MSE_terminal = loss_fn(u_of_tx, target_terminal)
 
     loss = MSE_functional + MSE_terminal
@@ -169,7 +167,7 @@ for it in range(max_updates):
 
     running_loss.append(loss.item())
 
-print(Net(torch.tensor([[0]]).double(), torch.tensor([[-3, 3]]).double()))
+print(Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double()))
 time_list = np.arange(0, 1000, 1)
 plt.plot(time_list, running_loss)
 plt.show()

@@ -94,7 +94,7 @@ class Mente_Carlo:
                 print(f'The l1-norm is evaluated by: {error.item()}')
 
             if visualize:
-                error_list.append(error.item())
+                error_list.append(G)
                 if eps == episodes:
                     plt.plot(np.arange(1, episodes + 1), error_list)
                     plt.xlabel("Timesteps", fontsize=20)
@@ -113,9 +113,9 @@ D = np.identity(2)
 SIG= np.diag([0.05, 0.05])
 model_p = [H,M,C,D,R,SIG]
 t0 = torch.tensor([0])
-x = torch.tensor([[3, 3]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
-mc = Mente_Carlo(model_p, t_grid, 100)
+x = torch.tensor([[0, 0]]).float()
+t_grid = torch.from_numpy(np.linspace(0, 1, 1000))
+mc = Mente_Carlo(model_p, t_grid, 200)
 x_list, alpha_list = mc.X_simu(x)
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, x))

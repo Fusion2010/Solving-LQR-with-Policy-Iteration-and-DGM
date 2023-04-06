@@ -74,19 +74,22 @@ class SolveLQR:
         return a
 
 
-# H = np.identity(2)
-# M = np.identity(2)
-# R = np.identity(2)
-# C = 0.1*np.identity(2)
-# D = 0.1*np.identity(2)
-# t_grid = np.linspace(0, 1, 1000)
-# Sigma = np.diag([0.05, 0.05])
+H = np.identity(2)
+M = np.identity(2)
+R = np.identity(2)
+C = 0.1*np.identity(2)
+D = 0.1*np.identity(2)
+t_grid = np.linspace(0, 1, 1000)
+Sigma = np.diag([0.05, 0.05])
+x = torch.tensor([[3, 3]]).float()
+t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
 # t = torch.tensor(t_grid)
 # batch_size = 1000
 # space =(torch.rand(batch_size, 1, 2) - 0.5)*6
-# LQR1 = SolveLQR(H, M, C, D, R, Sigma, t_grid)
+LQR1 = SolveLQR(H, M, C, D, R, Sigma, t_grid)
 #
-# v = LQR1.get_value(t, space)
+v = LQR1.get_value(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
+print(v)
 # a = LQR1.get_controller(t, space)
 # plt.plot(v)
 # plt.show()
