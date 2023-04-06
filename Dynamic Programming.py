@@ -63,17 +63,17 @@ class AgentDP:
 
         self.optim_policy.zero_grad()
 
-        H_loss = (torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.H),grad_u_x.unsqueeze(2))\
-                  + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.M),grad_u_x.unsqueeze(2))
-                  + torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.C), x.detach().unsqueeze(2))\
-                  + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.D),alpha.unsqueeze(2))).squeeze(1)
+        H_loss = (torch.matmul(torch.matmul(x, self.H.T), grad_u_x.T)
+                 + torch.matmul(torch.matmul(alpha, self.M.T), grad_u_x.T)
+                 + torch.matmul(torch.matmul(x, self.C), x.T)
+                 + torch.matmul(torch.matmul(alpha, self.D), alpha.T)).squeeze(1)
 
         H_loss /= self.batch_size
 
-        H_loss.backward()
+        H_loss.backward(retain_graph=True)
         self.optim_policy.step()
 
-        return {'Hamiltonian loss:', H_loss.item()}
+        return {'Hamiltonian loss:': H_loss.item()}
 
     def policy_evaluate(self, t, x):
         '''
@@ -81,8 +81,6 @@ class AgentDP:
         :param x: one episode of x with batch size
         :return: loss of policy network
         '''
-
-        P = 0
 
         alpha = self.policy_net(t, x)
 
@@ -95,10 +93,10 @@ class AgentDP:
 
         self.optim_critic.zero_grad()
         pde = grad_u_t + 0.5 * self.tr * laplacian \
-              + (torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.H), grad_u_x.unsqueeze(2)) \
-                 + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.M), grad_u_x.unsqueeze(2))
-                 + torch.matmul(torch.matmul(x.detach().unsqueeze(1), self.C), x.detach().unsqueeze(2)) \
-                 + torch.matmul(torch.matmul(alpha.unsqueeze(1), self.D), alpha.unsqueeze(2))).squeeze(1)
+              + (torch.matmul(torch.matmul(x, self.H.T), grad_u_x.T)
+                 + torch.matmul(torch.matmul(alpha, self.M.T), grad_u_x.T)
+                 + torch.matmul(torch.matmul(x, self.C), x.T)
+                 + torch.matmul(torch.matmul(alpha, self.D), alpha.T)).squeeze(1)
 
         MSE_functional = self.loss_fn(pde, target_functional)
 
@@ -111,22 +109,19 @@ class AgentDP:
         MSE_terminal = self.loss_fn(u_of_tx, target_terminal)
 
         B_loss = MSE_functional + MSE_terminal
-        B_loss.backward()
+        B_loss.backward(retain_graph=True)
         self.optim_critic.step()
 
         return {'Bellman Loss:': B_loss.item()}
 
-H = np.identity(2)
-M = np.identity(2)
-R = np.identity(2)
-C = 0.1*np.identity(2)
-D = 0.1*np.identity(2)
+H = torch.eye(2).double()
+M = torch.eye(2).double()
+R = torch.eye(2).double()
+C = torch.eye(2).double()* 0.1
+D = torch.eye(2).double() * 0.1
 T = 1
-sigma = np.diag([0.05, 0.05])
-H = torch.from_numpy(H)
-M = torch.from_numpy(M)
-C = torch.from_numpy(C)
-D = torch.from_numpy(D)
+sigma = torch.diag(torch.tensor([0.5, 0.5]))
+
 
 # Initialize the dynamic programming agent
 agent = AgentDP(1, H, M, C, D, sigma, T, 0.001, 0.001)
@@ -135,5 +130,30 @@ agent = AgentDP(1, H, M, C, D, sigma, T, 0.001, 0.001)
 t = torch.rand(1, 1, requires_grad=True).double()
 input_domain = (torch.rand(1, 2, requires_grad=True) - 0.5)*6
 input_domain = input_domain.double()
-print(agent.policy_improvement(t, input_domain))
 
+def train_DP(Agent, criteria, max_steps):
+    '''
+    :param Agent:
+    :param criteria:
+    :param max_steps:
+    :return:
+    '''
+    error = criteria * 1e6
+    t = torch.rand(1, 1, requires_grad=True).double()
+    x = (torch.rand(1, 2, requires_grad=True) - 0.5) * 6
+    x = x.double()
+    step = 1
+
+    while (error > criteria) & (step < max_steps):
+
+        value_last = Agent.critic_net(t, x)
+        Agent.policy_evaluate(t, x)
+        Agent.policy_improvement(t, x)
+        value_improved = Agent.critic_net(t, x)
+        error = torch.abs(value_improved - value_last)
+        print({f'Step {step}': error})
+        step += 1
+
+    return t, x, value_improved.item()
+
+print(train_DP(agent, 1e-4, 100))

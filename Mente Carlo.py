@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from matplotlib import pyplot as plt
+from E1_1 import SolveLQR
 
 class Mente_Carlo:
 
