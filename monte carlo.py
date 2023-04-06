@@ -4,7 +4,7 @@ from E1_1 import SolveLQR
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 
-class Mente_Carlo:
+class Monte_Carlo:
 
     def __init__(self, model_para: list, time_grid, sample_size: int):
 
@@ -48,7 +48,6 @@ class Mente_Carlo:
         return (torch.matmul(self.H_T, x_t.T) + torch.matmul(self.M_T, alpha.T)) * self.delta_t
 
     def X_simu(self, position):
-
         X = position
         t = 0
         x_list = []
@@ -62,7 +61,6 @@ class Mente_Carlo:
             t += self.delta_t
             x_list.append(X.squeeze())
             alpha_list.append(alpha_t)
-
         return x_list, alpha_list
 
     def objective_function(self, sample, control, delta_t):
@@ -88,13 +86,13 @@ class Mente_Carlo:
             r = self.objective_function(sample, alpha_list, self.delta_t)
             G = (G * (eps - 1) + r) / eps
 
-            error = np.abs(G - value)
+            error = np.abs((G - value)/ value)
 
             if measure:
                 print(f'The l1-norm is evaluated by: {error.item()}')
 
             if visualize:
-                error_list.append(G)
+                error_list.append(error.item())
                 if eps == episodes:
                     plt.plot(np.arange(1, episodes + 1), error_list)
                     plt.xlabel("Timesteps", fontsize=20)
@@ -105,17 +103,18 @@ class Mente_Carlo:
 
                     plt.show()
 
+
 H = np.identity(2)
 M = np.identity(2)
 R = np.identity(2)
 C = np.identity(2)
-D = np.identity(2)
+D = 0.1*np.identity(2)
 SIG= np.diag([0.05, 0.05])
 model_p = [H,M,C,D,R,SIG]
 t0 = torch.tensor([0])
-x = torch.tensor([[0, 0]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 1000))
-mc = Mente_Carlo(model_p, t_grid, 200)
+x = torch.tensor([[3, 3]]).float()
+t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
+mc = Monte_Carlo(model_p, t_grid, 100)
 x_list, alpha_list = mc.X_simu(x)
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, x))
