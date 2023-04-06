@@ -1,9 +1,9 @@
-import numpy as np
 import torch
 from torch.optim import Adam
-from tqdm import tqdm
+import numpy as np
 from Networks import FFN, Net_DGM, DGM_Layer
-from E1_1 import v
+from matplotlib import pyplot as plt
+from E1_1 import v, p
 
 def get_gradient(output, x):
     grad = torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True, only_inputs=True)[0]
@@ -140,7 +140,7 @@ grad_u_t = get_gradient(u_of_tx, t)
 alpha = agent.policy_net(t, input_domain)
 # print(agent.policy_evaluate(t, input_domain))
 
-def train_DP(Agent, criteria, max_steps):
+def train_DP(Agent, criteria, max_steps, example = False):
     '''
     :param Agent:
     :param criteria:
@@ -152,7 +152,9 @@ def train_DP(Agent, criteria, max_steps):
     t = torch.rand(1000, 1, requires_grad=True).double()
     x = (torch.rand(1000, 2, requires_grad=True) - 0.5) * 6
     x = x.double()
+    standard_v = v
     step = 1
+    error_list = []
 
     while (error > criteria) & (step < max_steps):
 
@@ -164,11 +166,18 @@ def train_DP(Agent, criteria, max_steps):
         print({f'Step {step}': error})
         step += 1
 
-    t_test = torch.tensor([[0]]).double()
-    x_test = torch.tensor([[1, 1]]).double()
-    value_test = Agent.critic_net(t_test, x_test)
+        # Example
+        t_test = torch.tensor([[0]]).double()
+        x_test = torch.tensor([[-3, 3]]).double()
+        value_test = Agent.critic_net(t_test, x_test)
 
-    return t_test, x_test, value_test.item()
+        error_list.append(torch.abs(value_test - standard_v).item())
 
-t_dp, x_dp, value_dp = train_DP(agent, 1e-4, 100)
+    if example:
+        plt.plot(np.arange(0, step - 1), error_list)
+        plt.show()
+
+    return value_test.item()
+
+t_dp, x_dp, value_dp = train_DP(agent, 3e-4, 300, example = True)
 print(value_dp)

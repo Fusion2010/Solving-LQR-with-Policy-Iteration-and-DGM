@@ -88,7 +88,8 @@ t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
 # space =(torch.rand(batch_size, 1, 2) - 0.5)*6
 LQR1 = SolveLQR(H, M, C, D, R, Sigma, t_grid)
 #
-v = LQR1.get_value(torch.tensor([1]).float(), torch.tensor([-3, 3]).float())
+v = LQR1.get_value(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
+p = LQR1.get_controller(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
 # print(v)
 # a = LQR1.get_controller(t, space)
 # plt.plot(v)

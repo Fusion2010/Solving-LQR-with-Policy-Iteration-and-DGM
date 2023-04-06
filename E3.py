@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import numpy as np
+from monte_carlo import G_list
 
 from collections import namedtuple
 from typing import Tuple
@@ -100,7 +101,7 @@ def get_laplacian(grad, x):
     return laplacian
 
 
-max_updates = 1000
+max_updates = 2000
 Net = Net_DGM(2, 100, activation = 'Tanh')
 
 optimizer = torch.optim.Adam(Net.parameters(), lr=0.001)
@@ -127,8 +128,11 @@ input_domain = input_domain.double()
 alpha = torch.ones_like(input_domain).double()
 
 step = 0
-error = []
+error_standard = []
+error_MC = []
 for it in range(max_updates):
+    step += 1
+    print(step)
     optimizer.zero_grad()
 
     input_domain = (torch.rand(batch_size, 2, requires_grad=True) - 0.5)*6
@@ -167,15 +171,19 @@ for it in range(max_updates):
     scheduler.step()
 
     running_loss.append(loss.item())
-    # Example: value function at Terminal time 1, Value of x [2, 2] with identity matrix R
+    # Example 1: value function at Terminal time 1, Value of x [2, 2] with identity matrix R
     standard = torch.matmul(torch.tensor([2, 2]), torch.tensor([2, 2]))
-    training = Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double())
-    error.append(torch.abs(training - standard).item())
+    training_1 = Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double())
+    error_standard.append(torch.abs(training_1 - standard).item())
+    # Example 2: Comparison with Monte Carlo simulation for x: [2, 2] from time 0 to 1
+    standard = np.array(G_list)
+    training_2 = Net(torch.tensor([[0]]).double(), torch.tensor([[2, 2]]).double()).item()
+    error_MC.append(np.abs(training_2 - standard))
 
 
-print(Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double()))
-fig, ax = plt.subplots(1, 2)
-time_list = np.arange(0, 1000, 1)
+fig, ax = plt.subplots(1, 3)
+time_list = np.arange(0, 2000, 1)
 ax[0].plot(time_list, running_loss)
-ax[1].plot(time_list, error)
+ax[1].plot(time_list, error_standard)
+ax[2].plot(time_list, error_MC)
 plt.show()

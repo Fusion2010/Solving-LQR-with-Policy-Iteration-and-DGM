@@ -81,10 +81,12 @@ class Monte_Carlo:
         episodes = self.sample_size
 
         G = 0
+        G_list = []
         for eps in tqdm(range(1, episodes + 1)):
             sample, alpha_list = self.X_simu(x)
             r = self.objective_function(sample, alpha_list, self.delta_t)
             G = (G * (eps - 1) + r) / eps
+            G_list.append(G)
 
             error = np.abs((G - value)/ value)
 
@@ -103,6 +105,7 @@ class Monte_Carlo:
 
                     plt.show()
 
+        return G_list
 
 H = np.identity(2)
 M = np.identity(2)
@@ -112,10 +115,10 @@ D = 0.1*np.identity(2)
 SIG= np.diag([0.05, 0.05])
 model_p = [H,M,C,D,R,SIG]
 t0 = torch.tensor([0])
-x = torch.tensor([[1, 1]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 1000))
+x = torch.tensor([[2, 2]]).float()
+t_grid = torch.from_numpy(np.linspace(0, 1, 2000))
 mc = Monte_Carlo(model_p, t_grid, 100)
 x_list, alpha_list = mc.X_simu(x)
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, x))
-mc.train_MC(t0, x, measure = False)
+G_list = mc.train_MC(t0, x, measure = False)
