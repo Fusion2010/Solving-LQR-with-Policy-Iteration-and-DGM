@@ -3,7 +3,7 @@ Coursework
 
 ## Problem 1. 
 * Part (1): done 
-* Part (2): basically done (没对上：差100多)
+* Part (2): basically done (有人算绝对误差，我不说是谁（狗头)
 
 ## Prblem 2.
 * Code done.
