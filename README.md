@@ -13,3 +13,5 @@ Coursework
 * Debugging
 
 ## Problem 4.
+* Agent of Dynamic Programming done
+* TODO: Training function
