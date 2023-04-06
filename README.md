@@ -7,7 +7,7 @@ Coursework
 
 ## Prblem 2.
 * Code done.
-* Waiting for 大哥画图 (大哥已画完)
+* Plotting has been smashed
 
 ## Problem 3.
 * Debugging
