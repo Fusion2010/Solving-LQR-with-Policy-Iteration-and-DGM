@@ -10,7 +10,6 @@ from tqdm import tqdm
 from E1_1 import SolveLQR
 
 
-
 class DGM_Layer(nn.Module):
 
     def __init__(self, dim_x, dim_S, activation='Tanh'):
@@ -139,7 +138,7 @@ def train_value(max_updates = 1000,
 
         t_net = t.unsqueeze(1)
         input_domain_net = input_domain.squeeze()
-        u_of_tx = Net(t_net, input_domain_net)
+        u_of_tx = Net(t_net, input_domain_net).squeeze()
         loss = loss_fn(u_of_tx, target_functional)
 
         loss.backward()
@@ -171,13 +170,13 @@ kwags = {
     'R': np.identity(2),
     'C': 0.1*np.identity(2),
     'D': 0.1*np.identity(2),
-    'T': 1,
+    'T': np.linspace(0, 1, 1000),
     'Sigma': np.diag([0.05, 0.05]),
     'visualize': True,
 }
 
 
-train_value(max_updates = 1000,
+train_value(max_updates = 100,
             hidden_size = 100,
             activation = 'Tanh',
             learning_rate = 0.001,

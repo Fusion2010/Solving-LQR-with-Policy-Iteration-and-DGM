@@ -126,7 +126,8 @@ input_domain = (torch.rand(batch_size, 2, requires_grad=True) - 0.5)*6
 input_domain = input_domain.double()
 alpha = torch.ones_like(input_domain).double()
 
-
+step = 0
+error = []
 for it in range(max_updates):
     optimizer.zero_grad()
 
@@ -166,8 +167,15 @@ for it in range(max_updates):
     scheduler.step()
 
     running_loss.append(loss.item())
+    # Example: value function at Terminal time 1, Value of x [2, 2] with identity matrix R
+    standard = torch.matmul(torch.tensor([2, 2]), torch.tensor([2, 2]))
+    training = Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double())
+    error.append(torch.abs(training - standard).item())
+
 
 print(Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double()))
+fig, ax = plt.subplots(1, 2)
 time_list = np.arange(0, 1000, 1)
-plt.plot(time_list, running_loss)
+ax[0].plot(time_list, running_loss)
+ax[1].plot(time_list, error)
 plt.show()

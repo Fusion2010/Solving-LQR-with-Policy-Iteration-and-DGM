@@ -71,7 +71,7 @@ def train_policy(max_updates,
 
         input_domain = (torch.rand(batch_size, 1, 2) - 0.5)*6
         t = torch.from_numpy(np.linspace(0, 1, batch_size))
-        target_functional = LQR1.get_controller(t, input_domain).double()
+        target_functional = LQR1.get_controller(t, input_domain).squeeze().double()
 
         t_net = t.unsqueeze(1)
         input_domain_net = input_domain.squeeze()
@@ -107,12 +107,12 @@ kwags = {
     'R': np.identity(2),
     'C': 0.1*np.identity(2),
     'D': 0.1*np.identity(2),
-    'T': 1,
+    'T': np.linspace(0, 1, 1000),
     'Sigma': np.diag([0.05, 0.05]),
     'visualize': True,
 }
 
-train_policy(max_updates = 1000,
+train_policy(max_updates = 100,
              layer_size = [3, 100, 2],
              activation = 'Tanh',
              learning_rate = 0.001,

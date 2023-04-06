@@ -92,7 +92,7 @@ class Monte_Carlo:
                 print(f'The l1-norm is evaluated by: {error.item()}')
 
             if visualize:
-                error_list.append(error.item())
+                error_list.append(G)
                 if eps == episodes:
                     plt.plot(np.arange(1, episodes + 1), error_list)
                     plt.xlabel("Timesteps", fontsize=20)
@@ -112,8 +112,8 @@ D = 0.1*np.identity(2)
 SIG= np.diag([0.05, 0.05])
 model_p = [H,M,C,D,R,SIG]
 t0 = torch.tensor([0])
-x = torch.tensor([[3, 3]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
+x = torch.tensor([[1, 1]]).float()
+t_grid = torch.from_numpy(np.linspace(0, 1, 1000))
 mc = Monte_Carlo(model_p, t_grid, 100)
 x_list, alpha_list = mc.X_simu(x)
 # print(objective_function(x_list, alpha_list, 0.001, R_T))

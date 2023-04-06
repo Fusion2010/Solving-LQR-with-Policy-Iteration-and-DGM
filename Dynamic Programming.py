@@ -165,11 +165,10 @@ def train_DP(Agent, criteria, max_steps):
         step += 1
 
     t_test = torch.tensor([[0]]).double()
-    x_test = torch.tensor([[0, 0]]).double()
+    x_test = torch.tensor([[1, 1]]).double()
     value_test = Agent.critic_net(t_test, x_test)
 
     return t_test, x_test, value_test.item()
 
 t_dp, x_dp, value_dp = train_DP(agent, 1e-4, 100)
 print(value_dp)
-print(v)
