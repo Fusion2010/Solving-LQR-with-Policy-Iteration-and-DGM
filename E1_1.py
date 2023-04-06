@@ -37,6 +37,10 @@ class SolveLQR:
         return sol_s
 
     def get_value(self, time, space):
+        # if type(time) != torch.Tensor:
+        #     time = torch.tensor(time)
+        # if type(space) != torch.Tensor:
+        #     space = torch.tensor(space)
         #cnvert time tensor to corresponding index list, index on timegrid
         time_index_list = torch.div(time, self.dt).floor().tolist()
         v1 = torch.zeros_like(time)
@@ -65,7 +69,7 @@ class SolveLQR:
         st = torch.tensor(st).float()
         a0 = torch.matmul(torch.tensor(- self.d), torch.tensor(self.m.T)).float()
         l = len(time)
-        a1 = torch.matmul(st, space.reshape((l, 2, 1))).float()
+        a1 = torch.matmul(st, space.reshape(l, 2, 1)).float()
         a = torch.matmul(a0, a1)
         return a
 
