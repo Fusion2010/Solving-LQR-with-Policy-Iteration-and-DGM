@@ -2,11 +2,10 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import numpy as np
-from monte_carlo import G_list
 
 from collections import namedtuple
 from typing import Tuple
-
+from E3_MC_fix_control import value_fix
 
 
 
@@ -90,21 +89,22 @@ def get_gradient(output, x):
     grad = torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True, only_inputs=True)[0]
     return grad
 
+
 def get_laplacian(grad, x):
     hess_diag = []
     for d in range(x.shape[1]):
         v = grad[:,d].view(-1,1)
         grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
         hess_diag.append(grad2[:,d].view(-1,1))
-    hess_diag = torch.cat(hess_diag,1)
+    hess_diag = torch.cat(hess_diag, 1)
     laplacian = hess_diag.sum(1, keepdim=True)
     return laplacian
 
 
-max_updates = 2000
-Net = Net_DGM(2, 100, activation = 'Tanh')
+max_updates = 160
+Net = Net_DGM(2, 100, activation = 'LogSigmoid')
 
-optimizer = torch.optim.Adam(Net.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(Net.parameters(), lr=0.002)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=(10000,), gamma=0.1)
 
 loss_fn = nn.MSELoss()
@@ -112,27 +112,29 @@ loss_fn = nn.MSELoss()
 H = torch.eye(2).double()
 M = torch.eye(2).double()
 R = torch.eye(2).double()
-C = torch.eye(2).double()* 0.1
-D = torch.eye(2).double() * 0.1
+C = 0.8*torch.eye(2).double()
+D = 0.1*torch.eye(2).double()
 T = 1
-sigma = torch.diag(torch.tensor([0.5, 0.5]))
+sigma = torch.diag(torch.tensor([0.05, 0.05]))
 #LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
-Sig = sigma * sigma.T
+Sig = torch.mm(sigma, sigma.T)
 tr = Sig.trace()
 
-batch_size = 1
+batch_size = 1000
 running_loss = []
-
-input_domain = (torch.rand(batch_size, 2, requires_grad=True) - 0.5)*6
-input_domain = input_domain.double()
-alpha = torch.ones_like(input_domain).double()
 
 step = 0
 error_standard = []
 error_MC = []
+
+sum_loss = 0
+sum_error = 0
+episdoe = []
+loss_eps = []
+error_eps = []
+
 for it in range(max_updates):
     step += 1
-    print(step)
     optimizer.zero_grad()
 
     input_domain = (torch.rand(batch_size, 2, requires_grad=True) - 0.5)*6
@@ -155,7 +157,6 @@ for it in range(max_updates):
                  + torch.mul(torch.matmul(alpha, D), alpha)
                  ).sum(dim = 1).unsqueeze(1)
 
-
     MSE_functional = loss_fn(pde, target_functional)
 
     input_terminal = input_domain
@@ -170,20 +171,38 @@ for it in range(max_updates):
     optimizer.step()
     scheduler.step()
 
-    running_loss.append(loss.item())
-    # Example 1: value function at Terminal time 1, Value of x [2, 2] with identity matrix R
-    standard = torch.matmul(torch.tensor([2, 2]), torch.tensor([2, 2]))
-    training_1 = Net(torch.tensor([[1]]).double(), torch.tensor([[2, 2]]).double())
-    error_standard.append(torch.abs(training_1 - standard).item())
-    # Example 2: Comparison with Monte Carlo simulation for x: [2, 2] from time 0 to 1
-    standard = np.array(G_list)
-    training_2 = Net(torch.tensor([[0]]).double(), torch.tensor([[2, 2]]).double()).item()
-    error_MC.append(np.abs(training_2 - standard))
+    # take value at t,x
+    t0 = torch.zeros(1, 1, requires_grad=False).double()
+    x0 = torch.ones(1, 2, requires_grad=False).double()
+    value_dgm = Net(t0.detach(), x0.detach()).float()
+    error = abs((value_dgm - value_fix)/value_fix).squeeze().detach().numpy()
 
+    running_loss.append(loss.item())#per iteration
+    sum_loss += loss.item()
+    sum_error += error
+
+    if (it + 1) % 10 == 0:  # print every 10 iterations
+        mean_loss = sum_loss / 10
+        mean_error = sum_error / 10
+        episdoe.append(it)
+        loss_eps.append(mean_loss) #per 10 iterations
+        error_eps.append(mean_error) #per 10 iterations
+        print('[%5d] Training loss: %.9f' % (it + 1, mean_loss))
+        sum_loss = 0.0
+        sum_error = 0.0
 
 fig, ax = plt.subplots(1, 3)
-time_list = np.arange(0, 2000, 1)
+time_list = np.arange(0, 160, 1)
 ax[0].plot(time_list, running_loss)
-ax[1].plot(time_list, error_standard)
-ax[2].plot(time_list, error_MC)
+ax[0].set_title('loss per iteration')
+ax[1].plot(episdoe, loss_eps)
+ax[1].set_title('loss per 10 iterations')
+ax[2].plot(episdoe, error_eps)
+ax[2].set_title('error against MC per 10 iterations')
+
 plt.show()
+
+
+# time_list = np.arange(0, 2000, 1)
+# plt.plot(time_list, running_loss)
+# plt.show()
