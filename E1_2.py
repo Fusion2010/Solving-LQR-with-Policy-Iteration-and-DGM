@@ -9,14 +9,15 @@ class Monte_Carlo:
     def __init__(self, model_para: list, time_grid, sample_size: int):
 
         '''
-        Initialize LQR solver, model_para = [H, M, R, C, D, Sigma], T is the terminal of time grid
+        Initialize LQR solver, model_para = [H, M, C, D, R, Sigma], T is the terminal of time grid
         '''
         self.H = model_para[0]
         self.M = model_para[1]
-        self.R = model_para[2]
-        self.C = model_para[3]
-        self.D = model_para[4]
+        self.C = model_para[2]
+        self.D = model_para[3]
+        self.R = model_para[4]
         self.Sigma = model_para[5]
+
         self.solver = SolveLQR(self.H, self.M,  self.C, self.D, self.R, self.Sigma, time_grid)
 
         '''
@@ -94,7 +95,7 @@ class Monte_Carlo:
                 print(f'The l1-norm is evaluated by: {error.item()}')
 
             if visualize:
-                error_list.append(G)
+                error_list.append(error)
                 if eps == episodes:
                     plt.plot(np.arange(1, episodes + 1), error_list)
                     plt.xlabel("Timesteps", fontsize=20)
@@ -110,10 +111,11 @@ class Monte_Carlo:
 H = np.identity(2)
 M = np.identity(2)
 R = np.identity(2)
-C = np.identity(2)
+C = 0.8*np.identity(2)
 D = 0.1*np.identity(2)
 SIG= np.diag([0.05, 0.05])
 model_p = [H,M,C,D,R,SIG]
+
 t0 = torch.tensor([0])
 x = torch.tensor([[2, 2]]).float()
 t_grid = torch.from_numpy(np.linspace(0, 1, 2000))

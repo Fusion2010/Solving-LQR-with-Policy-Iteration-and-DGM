@@ -113,17 +113,17 @@ def train_value(max_updates = 1000,
 
     H = kwags.get('H')
     M = kwags.get('M')
-    R = kwags.get('R')
     C = kwags.get('C')
     D = kwags.get('D')
-    T = kwags.get('T')
+    R = kwags.get('R')
     Sigma = kwags.get('Sigma')
+    T_grid = kwags.get('T_grid')
     Net = Net_DGM(2, hidden_size, activation = activation)
 
     optimizer = torch.optim.Adam(Net.parameters(), lr = learning_rate)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones = milestones, gamma = gamma)
 
-    LQR1 = SolveLQR(H, M, Sigma, C, D, R, T)
+    LQR1 = SolveLQR(H, M, C, D, R, Sigma, T_grid)
 
     running_loss = 0
     episdoe = []
@@ -133,7 +133,7 @@ def train_value(max_updates = 1000,
         optimizer.zero_grad()
 
         input_domain = (torch.rand(batch_size, 1, 2) - 0.5)*6
-        t = torch.from_numpy(np.linspace(0, 1, batch_size))
+        t = torch.rand(batch_size).double()
         target_functional = LQR1.get_value(t, input_domain)
 
         t_net = t.unsqueeze(1)
@@ -156,10 +156,11 @@ def train_value(max_updates = 1000,
 
     if kwags['visualize']:
         plt.plot(episdoe, loss_eps)
-        plt.xlabel("Timesteps", fontsize = 20)
-        plt.ylabel("Averaged Loss", fontsize = 20)
+        plt.xlabel("Iterations", fontsize = 18)
+        plt.ylabel("Averaged Loss", fontsize = 18)
         plt.xticks(fontsize = 15)
         plt.yticks(fontsize = 15)
+        plt.title('Supervised learning of value function by NET_DGM', fontsize = 20)
         plt.tight_layout(pad = 0.3)
 
         plt.show()
@@ -167,11 +168,11 @@ def train_value(max_updates = 1000,
 kwags = {
     'H': np.identity(2),
     'M': np.identity(2),
-    'R': np.identity(2),
-    'C': 0.1*np.identity(2),
+    'C': 0.8*np.identity(2),
     'D': 0.1*np.identity(2),
-    'T': np.linspace(0, 1, 1000),
+    'R': np.identity(2),
     'Sigma': np.diag([0.05, 0.05]),
+    'T_grid': np.linspace(0,1,1000),
     'visualize': True,
 }
 

@@ -10,7 +10,7 @@ from scipy.integrate import odeint
 
 class SolveLQR:
 
-    def __init__(self, h, m,  c, d, r, sigma, time_grid):
+    def __init__(self, h, m, c, d, r, sigma, time_grid):
         #variables in lowercase are corresponding uppercase matrices or arrays in LQR
         self.h = h
         self.m = m
@@ -44,9 +44,11 @@ class SolveLQR:
         #cnvert time tensor to corresponding index list, index on timegrid
         time_index_list = torch.div(time, self.dt).floor().tolist()
         v1 = torch.zeros_like(time)
+        #finde integral term for each t x
         for i in range(len(time)):
             t0_index = int(time_index_list[i])
             integral = 0
+            #integrate on time_grid
             while t0_index < len(self.solution)-1:
                 sr = np.array(self.solution[t0_index])
                 integrand = np.dot(np.dot(self.sigma, self.sigma.T), sr)
@@ -67,29 +69,30 @@ class SolveLQR:
         st = np.array([self.solution[int(index)] for index in time_index_list])
         #to speed up
         st = torch.tensor(st).float()
-        a0 = torch.matmul(torch.tensor(- self.d), torch.tensor(self.m.T)).float()
+        d_inv = np.linalg.inv(self.d)
+        a0 = torch.matmul(torch.tensor(-d_inv), torch.tensor(self.m.T)).float()
         l = len(time)
         a1 = torch.matmul(st, space.reshape(l, 2, 1)).float()
         a = torch.matmul(a0, a1)
         return a
 
 
-H = np.identity(2)
-M = np.identity(2)
-R = np.identity(2)
-C = 0.1*np.identity(2)
-D = 0.1*np.identity(2)
-t_grid = np.linspace(0, 1, 1000)
-Sigma = np.diag([0.05, 0.05])
-x = torch.tensor([[3, 3]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
+# H = np.identity(2)
+# M = np.identity(2)
+# R = np.identity(2)
+# C = 0.1*np.identity(2)
+# D = 0.1*np.identity(2)
+# t_grid = np.linspace(0, 1, 1000)
+# Sigma = np.diag([0.05, 0.05])
+# x = torch.tensor([[3, 3]]).float()
+# t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
 # t = torch.tensor(t_grid)
 # batch_size = 1000
 # space =(torch.rand(batch_size, 1, 2) - 0.5)*6
-LQR1 = SolveLQR(H, M, C, D, R, Sigma, t_grid)
-#
-v = LQR1.get_value(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
-p = LQR1.get_controller(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
+# LQR1 = SolveLQR(H, M, C, D, R, Sigma, t_grid)
+# #
+# v = LQR1.get_value(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
+# p = LQR1.get_controller(torch.tensor([0]).float(), torch.tensor([-3, 3]).float())
 # print(v)
 # a = LQR1.get_controller(t, space)
 # plt.plot(v)
