@@ -5,7 +5,7 @@ import numpy as np
 
 from collections import namedtuple
 from typing import Tuple
-from E3_MC_fix_control import value_fix
+from E3_MC_fix_control import value_fix0, value_fix1, value_fix2
 
 
 
@@ -93,6 +93,7 @@ sigma = torch.diag(torch.tensor([0.05, 0.05]))
 sig = torch.mm(sigma, sigma.T)
 
 def get_laplacian(grad, x):
+    # hessian actually but anyway
     v1 = grad[:,0].view(-1,1)
     grad21 = \
         torch.autograd.grad(v1, x, grad_outputs=torch.ones_like(v1), only_inputs=True, create_graph=True, retain_graph=True)[0]
@@ -115,8 +116,8 @@ def get_laplacian(grad, x):
 #     return laplacian
 
 
-max_updates = 800
-Net = Net_DGM(2, 100, activation = 'LogSigmoid')
+max_updates = 400
+Net = Net_DGM(2, 300, activation = 'LogSigmoid')
 
 optimizer = torch.optim.Adam(Net.parameters(), lr=0.002)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=(10000,), gamma=0.1)
@@ -134,18 +135,25 @@ sigma = torch.diag(torch.tensor([0.05, 0.05]))
 Sig = torch.mm(sigma, sigma.T)
 tr = Sig.trace()
 
-batch_size = 10000
+batch_size = 4000
 running_loss = []
 
 step = 0
 error_standard = []
 error_MC = []
 
+sum_error0 = 0
+sum_error1 = 0
+sum_error2 = 0
+
+error_eps0 = []
+error_eps1 = []
+error_eps2 = []
+
 sum_loss = 0
-sum_error = 0
 episdoe = []
 loss_eps = []
-error_eps = []
+
 
 for it in range(max_updates):
     step += 1
@@ -186,34 +194,53 @@ for it in range(max_updates):
     scheduler.step()
 
     # take value at t,x
-    t0 = torch.zeros(1, 1, requires_grad=False).double()
-    x0 = torch.ones(1, 2, requires_grad=False).double()
-    value_dgm = Net(t0.detach(), x0.detach()).float()
-    error = abs((value_dgm - value_fix)/value_fix).squeeze().detach().numpy()
+    t0 = torch.tensor([[0]])
+    x0 = torch.tensor([[1, 0]]).double()
+    x1 = torch.tensor([[1.5, 1.5]]).double()
+    x2 = torch.tensor([[-2, 2]]).double()
+
+    value_dgm0 = Net(t0.detach(), x0.detach()).float()
+    value_dgm1 = Net(t0.detach(), x1.detach()).float()
+    value_dgm2 = Net(t0.detach(), x2.detach()).float()
+
+    error0 = abs((value_dgm0 - value_fix0)/value_fix0).squeeze().detach().numpy()
+    error1 = abs((value_dgm1 - value_fix1)/value_fix1).squeeze().detach().numpy()
+    error2 = abs((value_dgm2 - value_fix2)/value_fix2).squeeze().detach().numpy()
 
     running_loss.append(loss.item())#per iteration
     sum_loss += loss.item()
-    sum_error += error
+    sum_error0 += error0
+    sum_error1 += error1
+    sum_error2 += error2
+
 
     if (it + 1) % 10 == 0:  # print every 10 iterations
         mean_loss = sum_loss / 10
-        mean_error = sum_error / 10
+        mean_error0 = sum_error0 / 10
+        mean_error1 = sum_error1 / 10
+        mean_error2 = sum_error2 / 10
         episdoe.append(it)
         loss_eps.append(mean_loss) #per 10 iterations
-        error_eps.append(mean_error) #per 10 iterations
+        error_eps0.append(mean_error0) #per 10 iterations
+        error_eps1.append(mean_error1)
+        error_eps2.append(mean_error2)
         print('[%5d] Training loss: %.9f' % (it + 1, mean_loss))
         sum_loss = 0.0
-        sum_error = 0.0
+        sum_error0 = 0.0
+        sum_error1 = 0.0
+        sum_error2 = 0.0
 
 fig, ax = plt.subplots(1, 3)
-time_list = np.arange(0, 800, 1)
+time_list = np.arange(0, max_updates, 1)
 ax[0].plot(time_list, running_loss)
 ax[0].set_title('loss per iteration')
 ax[1].plot(episdoe, loss_eps)
 ax[1].set_title('loss per 10 iterations')
-ax[2].plot(episdoe, error_eps)
+ax[2].plot(episdoe, error_eps0, color='skyblue', label="[1,0]")
+ax[2].plot(episdoe, error_eps1, color='limegreen', label='[1.5,1.5]')
+ax[2].plot(episdoe, error_eps2, color='khaki', label='[-2,2]')
 ax[2].set_title('error against MC per 10 iterations')
-
+plt.legend()
 plt.show()
 
 
