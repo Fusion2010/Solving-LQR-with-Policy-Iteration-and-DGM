@@ -1,7 +1,7 @@
-## Contributors:
-*Fusion 2010: Alexey Na, S2301926
-*Lorenzo1215: Houhan Teng, S2447087
-*Zarachy Su, S1712377
+## Group Members:
+* Fusion 2010: Alexey Na, S2301926
+* Lorenzo1215: Houhan Teng, S2447087
+* Ziyue0409: Zarachy Su, S1712377
 
 
 ## Plot instructions:
