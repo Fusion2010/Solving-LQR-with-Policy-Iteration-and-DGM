@@ -4,7 +4,7 @@
 * Ziyue0409: Zarachy Su, S1712377
 * P.S. One may find this link funny: https://github.com/Fusion2010/We-Cant-Stopping-Doing-It/graphs/contributors
 
-## Plot instructions:
+## Plot Instructions:
 * Plot for exercise 1.2 will need E1_1.py and E1_2_PLOT.py, one will get the same graph as in the report if he or she runs function plot_exercise_1_2_2()    and plot_exercise_1_2_3() in E1_2_PLOT.py.
 * If one wants to test the error of Monte Carlo out of his or her own interests, he could custimze in E1_2_PLOT.py 
 * Plot for exercise 2.1: run E2_1.py, E1_1.py is needed
@@ -12,7 +12,7 @@
 * Plot for exercise 3: run E3.py, E1_1.py and E3_MC_fix_control.py is needed 
 * Plot for exercise 4: run E4.py, E1_1.py and Network.py is needed 
 
-## Brief introdiction of codes:
+## Brief Introdiction of Codes:
 ## Problem 1
 * plot: see plot instructions
 * Part (1): The class SolveLQR, is initialised with matrices specifying the linear quadratic regulator, parameter time_grid contains the terminal time and it is also where Ricatti ODE is solved on(see self.solution). All the input and output of functions in SolveLQR is compatible with type and shape required in coursework. 
