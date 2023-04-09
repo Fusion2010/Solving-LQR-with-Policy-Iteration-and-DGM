@@ -12,7 +12,7 @@
 * Plot for exercise 3: run E3.py, E1_1.py and E3_MC_fix_control.py is needed 
 * Plot for exercise 4: run E4.py, E1_1.py and Network.py is needed 
 
-##Problem 1
+## Problem 1
 * plot: see plot instructions
 * Part (1): The class SolveLQR, is initialised with matrices specifying the linear quadratic regulator, parameter time_grid contains the terminal time and it is also where Ricatti ODE is solved on(see self.solution). All the input and output of functions in SolveLQR is compatible with type and shape required in coursework. 
   * sol__ricatti: sovls Ricatti ODE on time grid 
