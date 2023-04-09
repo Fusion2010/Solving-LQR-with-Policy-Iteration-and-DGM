@@ -2,7 +2,7 @@
 * Fusion 2010: Alexey Na, S2301926
 * Lorenzo1215: Houhan Teng, S2447087
 * Ziyue0409: Zarachy Su, S1712377
-* P.S. One may find this link funny: https://github.com/Fusion2010/We-Cant-Stopping-Doing-It/graphs/contributors
+* Amusingly, one may find this link funny: https://github.com/Fusion2010/We-Cant-Stopping-Doing-It/graphs/contributors
 
 ## Plot Instructions:
 * Plot for exercise 1.2 will need E1_1.py and E1_2_PLOT.py, one will get the same graph as in the report if he or she runs function plot_exercise_1_2_2()    and plot_exercise_1_2_3() in E1_2_PLOT.py.
