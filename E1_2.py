@@ -75,7 +75,7 @@ class Monte_Carlo:
 
         return f + terminal
 
-    def train_MC(self, t0, x, measure = True, visualize = True):
+    def train_MC(self, t0, x, measure = True, visualize = True, relative = False):
 
         error_list = []
         value = self.value_function(t0, x)
@@ -88,17 +88,21 @@ class Monte_Carlo:
             r = self.objective_function(sample, alpha_list, self.delta_t)
             G = (G * (eps - 1) + r) / eps
             G_list.append(G)
-
-            error = np.abs((G - value)/ value)
+            if relative:
+                error = np.abs((G - value) / value)
+            else:
+                error = np.abs(G - value)
 
             if measure:
+
                 print(f'The l1-norm is evaluated by: {error.item()}')
 
             if visualize:
+
                 error_list.append(error)
                 if eps == episodes:
                     plt.plot(np.arange(1, episodes + 1), error_list)
-                    plt.xlabel("Timesteps", fontsize=20)
+                    plt.xlabel("Samples", fontsize=20)
                     plt.ylabel("Loss", fontsize=20)
                     plt.xticks(fontsize=15)
                     plt.yticks(fontsize=15)
@@ -108,19 +112,21 @@ class Monte_Carlo:
 
         return G_list
 
+
+# model parameters chosen through this coursework, terminal time is 1
 H = np.identity(2)
 M = np.identity(2)
 R = np.identity(2)
 C = 0.8*np.identity(2)
 D = 0.1*np.identity(2)
-SIG= np.diag([0.05, 0.05])
-model_p = [H,M,C,D,R,SIG]
+SIG = np.diag([0.05, 0.05])
+model_p = [H, M, C, D, R, SIG]
 
 t0 = torch.tensor([0])
 x = torch.tensor([[2, 2]]).float()
 t_grid = torch.from_numpy(np.linspace(0, 1, 2000))
 mc = Monte_Carlo(model_p, t_grid, 100)
-x_list, alpha_list = mc.X_simu(x)
+# x_list, alpha_list = mc.X_simu(x)
 # print(objective_function(x_list, alpha_list, 0.001, R_T))
 # print(value_function(lqr, t, x))
-G_list = mc.train_MC(t0, x, measure = False)
+G_list = mc.train_MC(t0, x, measure = False, visualize = True)

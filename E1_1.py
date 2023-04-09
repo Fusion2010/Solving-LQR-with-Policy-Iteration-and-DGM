@@ -80,7 +80,7 @@ class SolveLQR:
 # H = np.identity(2)
 # M = np.identity(2)
 # R = np.identity(2)
-# C = 0.1*np.identity(2)
+# C = 0.8*np.identity(2)
 # D = 0.1*np.identity(2)
 # t_grid = np.linspace(0, 1, 1000)
 # Sigma = np.diag([0.05, 0.05])

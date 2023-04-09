@@ -113,8 +113,8 @@ kwags = {
     'visualize': True,
 }
 
-train_policy(max_updates = 500,
-             layer_size = [3, 100, 2],
+train_policy(max_updates = 120,
+             layer_size = [3, 100, 100, 2],
              activation = 'Tanh',
              learning_rate = 0.001,
              milestones = (10000,),

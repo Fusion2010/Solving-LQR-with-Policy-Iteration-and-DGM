@@ -89,19 +89,33 @@ def get_gradient(output, x):
     grad = torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True, only_inputs=True)[0]
     return grad
 
+sigma = torch.diag(torch.tensor([0.05, 0.05]))
+sig = torch.mm(sigma, sigma.T)
 
 def get_laplacian(grad, x):
-    hess_diag = []
-    for d in range(x.shape[1]):
-        v = grad[:,d].view(-1,1)
-        grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
-        hess_diag.append(grad2[:,d].view(-1,1))
-    hess_diag = torch.cat(hess_diag, 1)
-    laplacian = hess_diag.sum(1, keepdim=True)
-    return laplacian
+    v1 = grad[:,0].view(-1,1)
+    grad21 = \
+        torch.autograd.grad(v1, x, grad_outputs=torch.ones_like(v1), only_inputs=True, create_graph=True, retain_graph=True)[0]
+    v2 = grad[:,1].view(-1,1)
+    grad22 = \
+        torch.autograd.grad(v2, x, grad_outputs=torch.ones_like(v2), only_inputs=True, create_graph=True, retain_graph=True)[0]
+    grad21 = grad21.unsqueeze(2)
+    grad22 = grad22.unsqueeze(2)
+    tr_hess = torch.matmul(sig.double(), torch.cat((grad21, grad22), 2).double()).diagonal(offset=0, dim1=-1, dim2=-2).sum(-1)
+    return tr_hess.unsqueeze(1)
+
+# def get_laplacian(grad, x):
+#     hess_diag = []
+#     for d in range(x.shape[1]):
+#         v = grad[:,d].view(-1,1)
+#         grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
+#         hess_diag.append(grad2[:,d].view(-1,1))
+#     hess_diag = torch.cat(hess_diag, 1)
+#     laplacian = hess_diag.sum(1, keepdim=True)
+#     return laplacian
 
 
-max_updates = 160
+max_updates = 800
 Net = Net_DGM(2, 100, activation = 'LogSigmoid')
 
 optimizer = torch.optim.Adam(Net.parameters(), lr=0.002)
@@ -120,7 +134,7 @@ sigma = torch.diag(torch.tensor([0.05, 0.05]))
 Sig = torch.mm(sigma, sigma.T)
 tr = Sig.trace()
 
-batch_size = 1000
+batch_size = 10000
 running_loss = []
 
 step = 0
@@ -192,7 +206,7 @@ for it in range(max_updates):
         sum_error = 0.0
 
 fig, ax = plt.subplots(1, 3)
-time_list = np.arange(0, 160, 1)
+time_list = np.arange(0, 800, 1)
 ax[0].plot(time_list, running_loss)
 ax[0].set_title('loss per iteration')
 ax[1].plot(episdoe, loss_eps)
