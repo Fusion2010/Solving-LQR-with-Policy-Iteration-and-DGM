@@ -1,7 +1,7 @@
 # Full-Marks-Stochastic-Control
 Coursework
 ## Plot instructions:
-* Plot for exercise 1.2 will need E1_1.py and E1_2_PLOT.py, one will get the same graph as in the report if he or her runs function plot_exercise_1_2_2()    and plot_exercise_1_2_3() in E1_2_PLOT.py.
+* Plot for exercise 1.2 will need E1_1.py and E1_2_PLOT.py, one will get the same graph as in the report if he or she runs function plot_exercise_1_2_2()    and plot_exercise_1_2_3() in E1_2_PLOT.py.
 * If one wants to test the error of Monte Carlo out of his or her own interests, he could custimze in E1_2_PLOT.py 
 * Plot for exercise 2.1: run E2_1.py, E1_1.py is needed
 * Plot for exercise 2.2: run E2_2.py, E1_1.py is needed 
@@ -28,5 +28,5 @@ Coursework
 
 ## Problem 4.
 * plot: see plot instructions
-* code is a relization couresework question 3 Policy iteration)
+* code is a relization couresework question (Policy iteration with DGM)
 
