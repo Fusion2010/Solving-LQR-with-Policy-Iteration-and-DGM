@@ -76,22 +76,7 @@ class Net_DGM(nn.Module):
         output = self.output_layer(S4)
         return output
 
-    def get_gradient(output, x):
-        grad = \
-        torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True,
-                            only_inputs=True)[0]
-        return grad
 
-    def get_laplacian(grad, x):
-        hess_diag = []
-        for d in range(x.shape[1]):
-            v = grad[:, d].view(-1, 1)
-            grad2 = torch.autograd.grad(v, x, grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True,
-                                        retain_graph=True)[0]
-            hess_diag.append(grad2[:, d].view(-1, 1))
-        hess_diag = torch.cat(hess_diag, 1)
-        laplacian = hess_diag.sum(1, keepdim=True)
-        return laplacian
 
 class FFN(nn.Module):
 
