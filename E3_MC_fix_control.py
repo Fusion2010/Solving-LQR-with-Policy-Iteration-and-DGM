@@ -98,12 +98,12 @@ SIG = np.diag([0.05, 0.05])
 model_p = [H, M, C, D, R, SIG]
 
 t0 = torch.tensor([0])
-x0 = torch.tensor([[1, 0]]).float()
 x1 = torch.tensor([[1.5, 1.5]]).float()
 x2 = torch.tensor([[-2, 2]]).float()
-t_grid = torch.from_numpy(np.linspace(0, 1, 4000))
+# t_grid = torch.from_numpy(np.linspace(0, 1, 4000))
+# mc = Monte_Carlo_fix(model_p, t_grid, 500)
+t_grid = torch.from_numpy(np.linspace(0, 1, 5000))
 mc = Monte_Carlo_fix(model_p, t_grid, 500)
 # mc at t = 0, x = [2,2]
-value_fix0 = mc.MC_fix_control(t0, x0)
 value_fix1 = mc.MC_fix_control(t0, x1)
 value_fix2 = mc.MC_fix_control(t0, x2)

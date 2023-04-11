@@ -123,7 +123,7 @@ def plot_time(fix_sample, time_step_lists, test_t, test_domain, relative = False
 def plot_sample(sample_list, fix_timestep, test_t, test_domain, relative = False):
     sup_error_list = np.ones((len(test_domain), len(sample_list)))
     for i in range(len(sample_list)):
-        samples = sample_step_list[i]
+        samples = sample_list[i]
         MC_sample = MC_plot(model_p, fix_timestep, samples)
         for j in range(len(test_domain)):
             x = test_domain[j]
@@ -155,9 +155,9 @@ test_color = ['coral',
 
 
 # set variation
-f_sample = 500
+f_sample = 5000
 f_timestep = 2000
-t_step_lists = [1, 10, 50, 100, 500, 1000]
+t_step_lists = [1, 10, 50, 100, 500, 1000, 5000, 10000]
 s_lists = [10, 50, 100, 500, 1000, 5000, 10000]
 
 # plot execution function
