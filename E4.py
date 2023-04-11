@@ -2,16 +2,93 @@ import torch
 from torch.optim import Adam
 from torch import nn
 import numpy as np
-from Networks import FFN, Net_DGM, DGM_Layer
+from Networks import FFN
 from matplotlib import pyplot as plt
 from E1_1 import SolveLQR
+
+
+
+
+class DGM_Layer(nn.Module):
+
+    def __init__(self, dim_x, dim_S, activation='Tanh'):
+        super(DGM_Layer, self).__init__()
+
+        if activation == 'ReLU':
+            self.activation = nn.ReLU()
+        elif activation == 'Tanh':
+            self.activation = nn.Tanh()
+        elif activation == 'Sigmoid':
+            self.activation = nn.Sigmoid()
+        elif activation == 'LogSigmoid':
+            self.activation = nn.LogSigmoid()
+        else:
+            raise ValueError("Unknown activation function {}".format(activation))
+
+        self.gate_Z = self.layer(dim_x + dim_S, dim_S)
+        self.gate_G = self.layer(dim_x + dim_S, dim_S)
+        self.gate_R = self.layer(dim_x + dim_S, dim_S)
+        self.gate_H = self.layer(dim_x + dim_S, dim_S)
+        self.double()
+
+    def layer(self, nIn, nOut):
+        l = nn.Sequential(nn.Linear(nIn, nOut), self.activation)
+        return l
+
+    def forward(self, x, S):
+        x_S = torch.cat([x, S], 1)
+        Z = self.gate_Z(x_S)
+        G = self.gate_G(x_S)
+        R = self.gate_R(x_S)
+
+        input_gate_H = torch.cat([x, S * R], 1)
+        H = self.gate_H(input_gate_H)
+
+        output = ((1 - G)) * H + Z * S
+        return output
+
+
+class Net_DGM(nn.Module):
+
+    def __init__(self, dim_x, dim_S, activation='Tanh'):
+        super(Net_DGM, self).__init__()
+
+        self.dim = dim_x
+        if activation == 'ReLU':
+            self.activation = nn.ReLU()
+        elif activation == 'Tanh':
+            self.activation = nn.Tanh()
+        elif activation == 'Sigmoid':
+            self.activation = nn.Sigmoid()
+        elif activation == 'LogSigmoid':
+            self.activation = nn.LogSigmoid()
+        else:
+            raise ValueError("Unknown activation function {}".format(activation))
+
+        self.input_layer = nn.Sequential(nn.Linear(dim_x + 1, dim_S), self.activation)
+
+        self.DGM1 = DGM_Layer(dim_x=dim_x + 1, dim_S=dim_S, activation=activation)
+        self.DGM2 = DGM_Layer(dim_x=dim_x + 1, dim_S=dim_S, activation=activation)
+        self.DGM3 = DGM_Layer(dim_x=dim_x + 1, dim_S=dim_S, activation=activation)
+
+        self.output_layer = nn.Linear(dim_S, 1)
+        self.double()
+
+    def forward(self, t, x):
+        tx = torch.cat([t, x], 1)
+        S1 = self.input_layer(tx)
+        S2 = self.DGM1(tx, S1)
+        S3 = self.DGM2(tx, S2)
+        S4 = self.DGM3(tx, S3)
+        output = self.output_layer(S4)
+        return output
+
 
 def get_gradient(output, x):
     grad = torch.autograd.grad(output, x, grad_outputs=torch.ones_like(output), create_graph=True, retain_graph=True, only_inputs=True)[0]
     return grad
 
 sigma = torch.diag(torch.tensor([0.05, 0.05]))
-# sigma = torch.diag(torch.tensor([0.0, 0.0]))
 sig = torch.mm(sigma, sigma.T)
 
 def get_laplacian(grad, x):
@@ -33,14 +110,21 @@ def get_laplacian(grad, x):
 #         v = grad[:,d].view(-1,1)
 #         grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
 #         hess_diag.append(grad2[:,d].view(-1,1))
-#     hess_diag = torch.cat(hess_diag,1)
+#     hess_diag = torch.cat(hess_diag, 1)
 #     laplacian = hess_diag.sum(1, keepdim=True)
 #     return laplacian
 
 
+
+
+
+
+
+
+
 class AgentDP:
 
-    def __init__(self, batch_size, H, M, R, C, D, sigma, T,
+    def __init__(self, batch_size, H, M, C, D, R, sigma, T,
                  learning_rate_critic,
                  learning_rate_policy):
         '''
@@ -70,7 +154,7 @@ class AgentDP:
 
         self.critic_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optim_critic , milestones=(10000,), gamma=0.1)
         self.policy_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optim_policy, milestones=(10000,), gamma=0.1)
-        self.loss_fn = torch.nn.MSELoss(reduction='mean')
+        self.loss_fn = torch.nn.MSELoss()
 
     def policy_improvement(self, t, x):
         '''
@@ -78,12 +162,12 @@ class AgentDP:
         :param x: one episode of x with batch size
         :return: loss of critic network
         '''
+        self.optim_policy.zero_grad()
+        self.optim_critic.zero_grad()
 
         u_of_tx = self.critic_net(t, x)
-        grad_u_x = get_gradient(u_of_tx, x).detach()
+        grad_u_x = get_gradient(u_of_tx, x)
         alpha = self.policy_net(t, x)
-
-        self.optim_policy.zero_grad()
 
         H_loss = (torch.mul(torch.matmul(input_domain, self.H.T), grad_u_x)
                  + torch.mul(torch.matmul(alpha, self.M.T), grad_u_x)
@@ -96,8 +180,7 @@ class AgentDP:
         H_loss.backward(retain_graph = True)
         self.optim_policy.step()
         self.policy_scheduler.step()
-        self.optim_policy.zero_grad()
-        self.optim_critic.zero_grad()
+
         print({'Hamiltonian loss:': H_loss.item()})
         return H_loss.item()
 
@@ -107,39 +190,44 @@ class AgentDP:
         :param x: one episode of x with batch size
         :return: loss of policy network
         '''
+        self.optim_policy.zero_grad()
+        self.optim_critic.zero_grad()
+
+        t = t
+        input_domain = x
+
+        # alpha = torch.ones_like(input_domain)
 
         alpha = self.policy_net(t, x).detach()
 
-        u_of_tx = self.critic_net(t, x)
-        grad_u_x = get_gradient(u_of_tx, x)
+        u_of_tx = self.critic_net(t, input_domain)
+        grad_u_x = get_gradient(u_of_tx, input_domain)
         grad_u_t = get_gradient(u_of_tx, t)
-        laplacian = get_laplacian(grad_u_x, x)
+        laplacian = get_laplacian(grad_u_x, input_domain)
+        # hessian actually
+        target_functional = torch.zeros_like(u_of_tx)
 
-        target_functional = torch.zeros_like(u_of_tx).detach()
-
-        self.optim_critic.zero_grad()
         pde = grad_u_t + 0.5 * laplacian \
               + (torch.mul(torch.matmul(input_domain, self.H.T), grad_u_x)
                  + torch.mul(torch.matmul(alpha, self.M.T), grad_u_x)
-                 + torch.mul(torch.matmul(x, self.C), x)
+                 + torch.mul(torch.matmul(input_domain, self.C), input_domain)
                  + torch.mul(torch.matmul(alpha, self.D), alpha)
-                 ).sum(dim = 1).unsqueeze(1)
+                 ).sum(dim=1).unsqueeze(1)
 
         MSE_functional = self.loss_fn(pde, target_functional)
 
-        input_terminal = x
+        input_terminal = input_domain
         t_terminal = torch.ones(self.batch_size, 1) * self.T
 
         u_terminal = self.critic_net(t_terminal, input_terminal)
-        target_terminal = torch.mul(torch.matmul(x.detach(), self.R), x.detach()).sum(dim = 1).unsqueeze(1).detach()
+        target_terminal = torch.mul(torch.matmul(input_terminal, self.R), input_terminal).sum(dim = 1).unsqueeze(1)
         MSE_terminal = self.loss_fn(u_terminal, target_terminal)
 
         B_loss = MSE_functional + MSE_terminal
-        B_loss.backward(retain_graph=True)
+        B_loss.backward(retain_graph = True)
         self.optim_critic.step()
         self.critic_scheduler.step()
-        self.optim_policy.zero_grad()
-        self.optim_critic.zero_grad()
+
         print({'Bellman Loss:': B_loss.item()})
         return B_loss.item()
 
@@ -152,9 +240,9 @@ T = 1
 # sigma = torch.diag(torch.tensor([0.0, 0.0]))
 sigma = torch.diag(torch.tensor([0.05, 0.05]))
 
-b_size = 2000
+b_size = 3000
 # Initialize the dynamic programming agent
-agent = AgentDP(b_size, H, M, R, C, D, sigma, T, 1e-2, 3e-4)
+agent = AgentDP(b_size, H, M, C, D, R, sigma, T, 2e-3, 3e-3)
 
 # Example of usage of update function
 t = torch.rand(b_size, 1, requires_grad=True).double()
@@ -222,14 +310,14 @@ def train_DP(Agent, criteria, max_steps, stop_critic, stop_policy, example = Fal
             x = (torch.rand(b_size, 2, requires_grad=True) - 0.5) * 6
             x = x.double()
             error_policy1 = Agent.policy_improvement(t, x)
-            diff_error_policy = error_policy1 - error_policy0
+            diff_error_policy = np.abs(error_policy1 - error_policy0)
             error_policy0 = error_policy1
 
         value_improved = Agent.critic_net(t_stop, x_stop).squeeze(1)
         error = l2(value_improved, value_last).item()
-        print({f'Step {step}': error})
         step += 1
 
+        print({f'Step {step}': error})
         # Example
         t_test = torch.tensor([[0]]).double()
         x_test = torch.tensor([[1.5, 1.5]]).double()
@@ -251,7 +339,7 @@ def train_DP(Agent, criteria, max_steps, stop_critic, stop_policy, example = Fal
         plt.show()
 
     return value_test.item()
-stop_value_iteration = 1
-stop_control_iteration = 0.01
-t_dp, x_dp, value_dp = train_DP(agent, 3e-5, 400, stop_value_iteration, stop_control_iteration, example = True)
+stop_value_iteration = 5e-1
+stop_control_iteration = 5e-3
+train_DP(agent, 3e-3, 200, stop_value_iteration, stop_control_iteration, example = True)
 
