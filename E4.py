@@ -264,6 +264,7 @@ SIG = np.diag([0.05, 0.05])
 # SIG = np.diag([0.0, 0.0])
 t_grid = torch.from_numpy(np.linspace(0, 1, 10000))
 
+# Example
 t0 = torch.tensor([0]).float()
 x0 = torch.tensor([1.5, 1.5]).float()
 standard_sol = SolveLQR(H, M, C, D, R, SIG, t_grid)
