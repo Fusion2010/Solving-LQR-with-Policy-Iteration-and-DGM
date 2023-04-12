@@ -104,6 +104,20 @@ def get_laplacian(grad, x):
     tr_hess = torch.matmul(sig.double(), torch.cat((grad21, grad22), 2).double()).diagonal(offset=0, dim1=-1, dim2=-2).sum(-1)
     return tr_hess.unsqueeze(1)
 
+# def get_laplacian(grad, x):
+#     hess_diag = []
+#     for d in range(x.shape[1]):
+#         v = grad[:,d].view(-1,1)
+#         grad2 = torch.autograd.grad(v,x,grad_outputs=torch.ones_like(v), only_inputs=True, create_graph=True, retain_graph=True)[0]
+#         hess_diag.append(grad2[:,d].view(-1,1))
+#     hess_diag = torch.cat(hess_diag, 1)
+#     laplacian = hess_diag.sum(1, keepdim=True)
+#     return laplacian
+
+
+
+
+
 
 
 
@@ -167,6 +181,7 @@ class AgentDP:
         self.optim_policy.step()
         self.policy_scheduler.step()
 
+        print({'Hamiltonian loss:': H_loss.item()})
         return H_loss.item()
 
     def policy_evaluate(self, t, x):
@@ -259,14 +274,7 @@ standard_a = standard_sol.get_controller(t0, x0).squeeze()
 print(standard_v)
 
 
-def train_DP(Agent,
-             criteria,
-             max_steps,
-             stop_critic_start,
-             stop_policy,
-             epsilon_decay = True,
-             example = False
-             ):
+def train_DP(Agent, criteria, max_steps, stop_critic, stop_policy, example = False):
     '''
     :param Agent:
     :param criteria:
@@ -280,7 +288,6 @@ def train_DP(Agent,
     error_list_v = []
     error_list_a = []
 
-
     while (error > criteria) & (step < max_steps):
 
         t_stop = torch.rand(b_size, 1, requires_grad=False).double()
@@ -288,33 +295,26 @@ def train_DP(Agent,
         x_stop = x_stop.double()
         value_last = Agent.critic_net(t_stop, x_stop).squeeze(1)
 
-        print('Training Value Network...')
-        if not epsilon_decay:
-            stop_critic = stop_critic_start
-        else:
-            if step == 1:
-                stop_critic = stop_critic_start
-            else:
-                stop_critic -= 1
-
         error_critic = 1e3
-        while error_critic >= stop_critic:
+        step1 = 0
+        while error_critic > stop_critic:
             t = torch.rand(b_size, 1, requires_grad=True).double()
             x = (torch.rand(b_size, 2, requires_grad=True) - 0.5) * 6
             x = x.double()
             error_critic = Agent.policy_evaluate(t, x)
+            step1 += 1
 
-        print('Training Policy Network...')
         diff_error_policy = 1e3
         error_policy0 = 0
-        while diff_error_policy >= stop_policy:
+        step2 = 0
+        while (diff_error_policy > stop_policy) & (step2 < 120):
             t = torch.rand(b_size, 1, requires_grad=True).double()
             x = (torch.rand(b_size, 2, requires_grad=True) - 0.5) * 6
             x = x.double()
             error_policy1 = Agent.policy_improvement(t, x)
             diff_error_policy = np.abs(error_policy1 - error_policy0)
-            print(diff_error_policy)
             error_policy0 = error_policy1
+            step2 += 1
 
         value_improved = Agent.critic_net(t_stop, x_stop).squeeze(1)
         error = l2(value_improved, value_last).item()
@@ -343,7 +343,7 @@ def train_DP(Agent,
 
     return value_test.item()
 
-stop_value_iteration = 10
-stop_control_iteration = 5e-1
-train_DP(agent, 3e-3, 10, stop_value_iteration, stop_control_iteration, epsilon_decay = True, example = True)
+stop_value_iteration = 5e-1
+stop_control_iteration = 1e-3
+train_DP(agent, 3e-4, 200, stop_value_iteration, stop_control_iteration, example = True)
 
