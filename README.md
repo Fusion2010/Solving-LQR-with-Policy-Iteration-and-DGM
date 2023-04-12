@@ -31,6 +31,6 @@
 
 ## Problem 4.
 * Plot: see plot instructions
-* Code is a relization couresework question (Policy iteration with DGM)
+* Code is a relization couresework question, Policy Iteration Algorithm.
 * Code instructions is a bit long we wrote it in the report.
 
