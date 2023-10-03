@@ -1,8 +1,10 @@
+Below are descriptions to the markers:
+
 ## Group Members:
 * Fusion 2010: Alexey Na, S2301926
-* Lorenzo1215: Houhan Teng, S2447087
+* LorenzoTeng: Houhan Teng, S2447087
 * Ziyue0409: Zarachy Su, S1712377
-* P.S. one may find this link funny: https://github.com/Fusion2010/We-Cant-Stopping-Doing-It/graphs/contributors
+* Contributions can be seen via this link: https://github.com/Fusion2010/We-Cant-Stopping-Doing-It/graphs/contributors
 
 ## Plot Instructions:
 * Plot for exercise 1.2 will need E1_1.py and E1_2_PLOT.py, one will get the same graph as in the report if he or she runs function plot_exercise_1_2_2()    and plot_exercise_1_2_3() in E1_2_PLOT.py.
@@ -13,7 +15,6 @@
 * Plot for exercise 4: run E4.py, E1_1.py and Network.py is needed 
 
 ## Problem 1
-* Plot: see plot instructions
 * Part (1): The class SolveLQR, is initialised with matrices specifying the linear quadratic regulator, parameter time_grid contains the terminal time and it is also where Ricatti ODE is solved on(see self.solution). All the input and output of functions in SolveLQR is compatible with type and shape required in coursework. 
   * sol__ricatti: sovls Ricatti ODE on time grid 
   * get_value: calculates control problem values at t,x (t and x can be torch tensor with shapes required in coursework)
@@ -21,16 +22,13 @@
 * Part (2): We defines a class Monte_Carlo to run the simulation, parameters to specify this class is the same as class SolveLQR. One may ignore all other functions except train_MC: in this train_MC function, the **Objective Function** will be calculated many times and average will be taken by iterations. If one sets 'visualize = True', then absolute error (Averaged Objective Function v.s. Value Function in Part (i)) will be plotted. He can also choose  relative error by setting 'relative = True'
 
 ## Prblem 2.
-* Plot: see plot instructions
 * Code is a relization of couresework question 2.1 (Supervised learning of value function) and 2.2 (Supervised learning of Markov control)
 
 
 ## Problem 3.
-* Plot: see plot instructions
 * Code is a relization couresework question 3 (Deep Galerkin approximation)
 
 ## Problem 4.
-* Plot: see plot instructions
 * Code is a relization couresework question, Policy Iteration Algorithm.
 * Code instructions is a bit long we wrote it in the report.
 
