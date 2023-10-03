@@ -1,4 +1,4 @@
-Below are descriptions to the markers:
+This is a coursework for Stochastic Control and Dynamic Asset Allocation. Below are descriptions to the markers:
 
 ## Group Members:
 * Fusion 2010: Alexey Na, S2301926
